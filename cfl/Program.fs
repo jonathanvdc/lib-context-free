@@ -1,6 +1,5 @@
 ﻿open libcontextfree
-open ParseTreeModule
-open TreeHandler
+open ParseTreeHelpers
 open System
 open System.IO
 
@@ -10,9 +9,20 @@ let readParseTreeFile (fileName : string) : ParseTree<string, string> option =
     try
         use fs = new FileStream(fileName, FileMode.Open, FileAccess.Read)
         use reader = new StreamReader(fs)
-        readNode reader
+        TreeHandler.readNode reader
     with
     | _ -> None
+
+/// Tries to write the given parse tree to the given output file.
+/// A boolean is returned that indicates success or failure.
+let writeGraphvizFile (tree : ParseTree<string, string>) (fileName : string) : bool =
+    try
+        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
+        use writer = new StreamWriter(fs)
+        GraphvizHandler.writeGraphviz writer tree
+        true
+    with
+    | _ -> false
 
 /// Defines a subprogram that prints the given property of the parse tree
 /// in file referred to by the single argument.
@@ -27,6 +37,18 @@ let printTreeProperty (show : ParseTree<string, string> -> string) (argv : strin
     | _          ->
         printfn "%s" "The specified subprogram takes exactly one argument: the file name of the parse tree file."
 
+/// Defines a subprogram function that reads input from a file, and writes it to another file.
+let performReadWrite (read : string -> 'a option) (write : 'a -> string -> bool) (argv : string list) =
+    match argv with
+    | [inputFileName; outputFileName] ->
+        match read inputFileName with
+        | None       -> printfn "%s" ("Could not read contents of file '" + inputFileName + "'.")
+        | Some input -> 
+            if not(write input outputFileName) then
+                printfn "%s" ("Could not write data to file '" + outputFileName + "'.")
+    | _                               ->
+        printfn "%s" "The specified subprogram takes exactly two arguments: the input and output file names."
+
 /// Gets the program's list of "subprograms",
 /// which are really just pairs of strings and 
 /// procedures that take a list of strings.
@@ -36,6 +58,7 @@ let subprograms : Map<string, string list -> unit> =
                    "yield", printTreeProperty treeYield
                    "derive-leftmost", printTreeProperty showLeftmostDerivationSequence
                    "derive-rightmost", printTreeProperty showRightmostDerivationSequence
+                   "dot", performReadWrite readParseTreeFile writeGraphvizFile
                    // Insert additional subprograms here.
                ]
 

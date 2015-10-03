@@ -1,18 +1,18 @@
 ﻿namespace libcontextfree
 
-module ParseTreeModule =
-    /// Defines a parse tree type, based on a nonterminal and a terminal type.
-    type ParseTree<'nonterminal, 'terminal> =
-        /// Defines a terminal leaf, which is a type of parse tree that 
-        /// contains only a single terminal.
-        | TerminalLeaf of 'terminal
-        /// Defines an epsilon leaf, which is a type of parse tree that
-        /// contains an epsilon value.
-        | EpsilonLeaf
-        /// Defines a production rule node, which is identified by a nonterminal and a 
-        /// list of child nodes.
-        | ProductionNode of 'nonterminal * ParseTree<'nonterminal, 'terminal> list
+/// Defines a parse tree type, based on a nonterminal and a terminal type.
+type ParseTree<'nonterminal, 'terminal> =
+    /// Defines a terminal leaf, which is a type of parse tree that 
+    /// contains only a single terminal.
+    | TerminalLeaf of 'terminal
+    /// Defines an epsilon leaf, which is a type of parse tree that
+    /// contains an epsilon value.
+    | EpsilonLeaf
+    /// Defines a production rule node, which is identified by a nonterminal and a 
+    /// list of child nodes.
+    | ProductionNode of 'nonterminal * ParseTree<'nonterminal, 'terminal> list
 
+module ParseTreeHelpers =
     /// Computes the yield of a parse tree.
     let rec treeYield (tree : ParseTree<'nonterminal, 'terminal>) : string =
         match tree with
