@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "libcontextfree", "libcontextfree.fsproj", "{7D46EF25-3654-469A-9117-E439513F84CA}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "cfl", "..\cfl\cfl.fsproj", "{3DA872B0-D8B7-483F-B660-3E73A9B0B113}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{7D46EF25-3654-469A-9117-E439513F84CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D46EF25-3654-469A-9117-E439513F84CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7D46EF25-3654-469A-9117-E439513F84CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

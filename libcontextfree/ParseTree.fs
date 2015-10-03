@@ -1,7 +1,5 @@
 ﻿namespace libcontextfree
 
-open ListHelpers
-
 module ParseTreeModule =
     /// Defines a parse tree type, based on a nonterminal and a terminal type.
     type ParseTree<'nonterminal, 'terminal> =
@@ -76,6 +74,7 @@ module ParseTreeModule =
     /// with a single node list, and then deriving one nonterminal
     /// at a time until only a list of terminal/epsilon leaves remain. 
     /// Said nonterminal is selected by the given split-at function.
+    /// The input node list is not included in the result list.
     let rec derivation splitAt (nodes : ParseTree<'a, 'b> list) : ParseTree<'a, 'b> list list =
         match derive splitAt nodes with
         | None   -> []
