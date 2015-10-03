@@ -79,3 +79,31 @@ module ParseTreeModule =
         match derive splitAt nodes with
         | None   -> []
         | Some x -> x :: derivation splitAt x
+
+    /// Gets the given tree's entire derivation 
+    /// sequence, including the input tree itself. 
+    /// Nonterminal nodes are replaced by the given split-at function.
+    let derivationSequence splitAt (tree : ParseTree<'a, 'b>) : ParseTree<'a, 'b> list list =
+        // The derivation sequence for this parse tree is obtained, 
+        // and the parse tree is explicitly prepended.
+        [tree] :: derivation splitAt [tree] 
+
+    /// Gets a string representation for the given tree's entire derivation 
+    /// sequence, including the input tree itself. 
+    /// Nonterminal nodes are replaced by the given split-at function.
+    let showDerivationSequence splitAt (tree : ParseTree<'a, 'b>) : string =
+        // First, every step in the derivation sequence is converted to the
+        // concatenation of its trees' head strings.
+        // Then, the results of that operation are joined with the " => " separator.
+        derivationSequence splitAt tree |> List.map (List.map treeHead >> List.fold (+) "")
+                                        |> String.concat " => "
+
+    /// Gets a string representation for the given tree's entire leftmost derivation 
+    /// sequence, including the input tree itself. 
+    let showLeftmostDerivationSequence<'a, 'b> : ParseTree<'a, 'b> -> string = 
+        showDerivationSequence ListHelpers.splitAtFirst
+
+    /// Gets a string representation for the given tree's entire rightmost derivation 
+    /// sequence, including the input tree itself. 
+    let showRightmostDerivationSequence<'a, 'b> : ParseTree<'a, 'b> -> string = 
+        showDerivationSequence ListHelpers.splitAtLast

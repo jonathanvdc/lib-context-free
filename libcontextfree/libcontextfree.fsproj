@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="ListHelpers.fs" />
     <Compile Include="ParseTree.fs" />
+    <Compile Include="TreeHandler.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

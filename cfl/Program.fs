@@ -1,33 +1,47 @@
 ﻿open libcontextfree
 open ParseTreeModule
+open TreeHandler
+open System
+open System.IO
 
-/// Gets a list of string representations for the given tree's entire derivation 
-/// sequence, including the input tree itself. 
-/// Nonterminal nodes are replaced by the given split-at function.
-let showDerivationSequence splitAt (tree : ParseTree<'a, 'b>) =
-    // First, the derivation sequence for this parse tree is obtained, 
-    // and the parse tree is explicitly prepended.
-    // Then, every step in the derivation sequence is converted to the
-    // concatenation of its trees' head strings.
-    [tree] :: derivation splitAt [tree] |> List.map (List.map treeHead >> List.fold (+) "")
+/// Tries to read a file that contains a parse tree. If something goes wrong,
+/// None is returned.
+let readParseTreeFile (fileName : string) : ParseTree<string, string> option =
+    try
+        use fs = new FileStream(fileName, FileMode.Open, FileAccess.Read)
+        use reader = new StreamReader(fs)
+        readNode reader
+    with
+    | _ -> None
 
-/// Gets a list of string representations for the given tree's entire leftmost derivation 
-/// sequence, including the input tree itself. 
-let showLeftmostDerivationSequence<'a, 'b> : ParseTree<'a, 'b> -> string list = 
-    showDerivationSequence ListHelpers.splitAtFirst
+/// Defines a subprogram that prints the given property of the parse tree
+/// in file referred to by the single argument.
+let printTreeProperty (show : ParseTree<string, string> -> string) (argv : string list) =
+    match argv with
+    | [fileName] ->
+        match readParseTreeFile fileName with
+        | None ->
+            printfn "%s" ("Could not read parse tree file '" + fileName + "'.")
+        | Some tree ->
+            printfn "%s" (show tree)
+    | _          ->
+        printfn "%s" "The specified subprogram takes exactly one argument: the file name of the parse tree file."
 
-/// Gets a list of string representations for the given tree's entire rightmost derivation 
-/// sequence, including the input tree itself. 
-let showRightmostDerivationSequence<'a, 'b> : ParseTree<'a, 'b> -> string list = 
-    showDerivationSequence ListHelpers.splitAtLast
+/// Gets the program's list of subprograms.
+let subprograms = 
+    Map.ofList [
+                   "head", printTreeProperty treeHead
+                   "yield", printTreeProperty treeYield
+                   "derive-leftmost", printTreeProperty showLeftmostDerivationSequence
+                   "derive-rightmost", printTreeProperty showRightmostDerivationSequence
+               ]
 
 [<EntryPoint>]
 let main argv = 
-    let testTree = ProductionNode('S', [ ProductionNode('S', [TerminalLeaf 'h']); EpsilonLeaf; ProductionNode('S', [TerminalLeaf 'i']) ])
-
-    printfn "%A" testTree
-    treeYield testTree |> printfn "%s"
-    treeHead testTree |> printfn "%s"
-    showLeftmostDerivationSequence testTree |> printfn "%A"
-    showRightmostDerivationSequence testTree |> printfn "%A"
+    match List.ofArray argv with
+    | x :: xs ->
+        subprograms.[x] xs
+    | _ ->
+        printfn "%s" "Please specify a subprogram. List of subprograms:"
+        subprograms |> Seq.iter ((fun x -> x.Key) >> printfn " * %s")
     0 // return an integer exit code
