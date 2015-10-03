@@ -34,6 +34,8 @@ module TreeHandler =
     /// Reads a word as a list of characters.
     let rec readAtomAsList (reader : TextReader) : char list =
         match readConditional isAtomChar reader with
+        // A '\' character is an escape sequence: it itself is not parsed,
+        // but its successor is.
         | Some '\\' -> List.append (readChar reader |> Option.toList) (readAtomAsList reader)
         | Some c    -> c :: readAtomAsList reader
         | None      -> []
