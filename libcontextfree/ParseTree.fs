@@ -20,7 +20,7 @@ module ParseTreeHelpers =
             // The yield of a terminal is the terminal's string representation.
             // Note: I'm casting `x` to `obj` here, because the `string` function
             //       requires a concrete type to operate on. Not doing that here causes
-            //       fsc to unify `'terminal` and `obj`.
+            //       fsc to unify `'b` and `obj`.
             string(x :> obj)
         | EpsilonLeaf           -> 
             // The yield of an epsilon leaf is the empty string.
