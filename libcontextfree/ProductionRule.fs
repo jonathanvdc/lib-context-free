@@ -15,21 +15,18 @@ type Either<'a, 'b> =
         | Right x -> x.ToString()
 
 /// Defines a production rule.
-type ProductionRule<'Nonterminal, 'Terminal>(head : 'Nonterminal, body : Either<'Nonterminal, 'Terminal> list) =
-    /// Gets this production rule's head, which is the
-    /// nonterminal on the production rule's left-hand side.
-    member this.Head = head
-    /// Gets this production rule's body, which is the
-    /// list of terminals and nonterminals on the
-    /// production rule's right-hand side.
-    member this.Body = body
+type ProductionRule<'Nonterminal, 'Terminal> =
+    /// A production rule is a tuple of a nonterminal - the rule's head -
+    /// and a list of nonterminals and terminals - the rule's body.
+    | ProductionRule of 'Nonterminal * Either<'Nonterminal, 'Terminal> list
 
     override this.ToString() =
-        // Production rules with empty bodies
-        // are really epsilon-rules.
-        let bodyString = match body with
-                         | [] -> "ε"
-                         | _  -> body |> List.map string 
-                                      |> List.fold (+) ""
-        head.ToString() + " -> " + bodyString
-
+        match this with
+        | ProductionRule(head, body) ->
+            // Production rules with empty bodies
+            // are epsilon-rules.
+            let bodyString = match body with
+                             | [] -> "ε"
+                             | _  -> body |> List.map string 
+                                          |> List.fold (+) ""
+            head.ToString() + " -> " + bodyString
