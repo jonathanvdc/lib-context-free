@@ -75,6 +75,8 @@ module ParseTreeHelpers =
         | TerminalLeaf _ -> Set.empty
         | ProductionNode(head, children) -> 
             let body = children |> List.map treeHead
+        | ProductionNode(head, items) -> 
+            let body = items |> List.map treeHead
             let rule = ProductionRule(head, body)
             let childRules = children |> List.map productionRules
             Set.add rule (Set.unionMany childRules)
@@ -85,8 +87,9 @@ module ParseTreeHelpers =
         treeHead >> string
 
     /// Get a string representation for the yield of a parse tree.
-    let showTreeYield<'nt, 't> : ParseTree<'nt, 't> -> string = 
-        treeYield >> string
+    let showTreeYield<'a, 'b> : ParseTree<'a, 'b> -> string = 
+        treeYield >> Seq.map (fun x -> x.ToString()) 
+                  >> Seq.fold (+) ""
 
     /// Gets a string representation for the given tree's entire derivation 
     /// sequence, including the input tree itself. 
