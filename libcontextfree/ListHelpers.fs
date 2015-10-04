@@ -10,13 +10,14 @@ module ListHelpers =
     ///
     /// For example:
     ///
-    /// let safeSqrt x = if x >= 0.0 then Some (sqrt x, -sqrt x) else None
+    ///     let safeSqrt x = if x >= 0.0 then Some (sqrt x, -sqrt x) else None
+    ///     
+    ///     splitAtFirst safeSqrt [-7.1; 9.0; 4.7; -1.2; 2.8; -5.1]
+    ///     = Some ([-7.1], (3.049590136, -3.049590136), [4.7; -1.2; 2.8; -5.1])
+    ///     
+    ///     splitAtFirst safeSqrt [-1.1; -2.2; -3.3]
+    ///     = None
     ///
-    /// splitAtFirst safeSqrt [-7.1; 9.0; 4.7; -1.2; 2.8; -5.1]
-    /// = Some ([-7.1], (3.049590136, -3.049590136), [4.7; -1.2; 2.8; -5.1])
-    /// 
-    /// splitAtFirst safeSqrt [-1.1; -2.2; -3.3]
-    /// = None
     let rec splitAtFirst (pred : 'a -> 'b option) (items : 'a list) : ('a list * 'b * 'a list) option =
         
         match items with
@@ -52,13 +53,14 @@ module ListHelpers =
     ///
     /// For example:
     ///
-    /// let safeSqrt x = if x >= 0.0 then Some (sqrt x, -sqrt x) else None
+    ///     let safeSqrt x = if x >= 0.0 then Some (sqrt x, -sqrt x) else None
+    ///     
+    ///     splitAtLast safeSqrt [-7.1; 9.0; 4.7; -1.2; 2.8; -5.1]
+    ///     = Some ([-7.1; 9.3; 4.7; -1.2], (1.673320053, -1.673320053), [-5.1])
+    ///     
+    ///     splitAtLast safeSqrt [-1.1; -2.2; -3.3]
+    ///     = None
     ///
-    /// splitAtLast safeSqrt [-7.1; 9.0; 4.7; -1.2; 2.8; -5.1]
-    /// = Some ([-7.1; 9.3; 4.7; -1.2], (1.673320053, -1.673320053), [-5.1])
-    /// 
-    /// splitAtLast safeSqrt [-1.1; -2.2; -3.3]
-    /// = None
     let rec splitAtLast (pred : 'a -> 'b option) (items : 'a list) : ('a list * 'b * 'a list) option =
         match items with
         | []      -> 
