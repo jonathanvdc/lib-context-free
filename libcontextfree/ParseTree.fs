@@ -75,8 +75,6 @@ module ParseTreeHelpers =
         | TerminalLeaf _ -> Set.empty
         | ProductionNode(head, children) -> 
             let body = children |> List.map treeHead
-        | ProductionNode(head, items) -> 
-            let body = items |> List.map treeHead
             let rule = ProductionRule(head, body)
             let childRules = children |> List.map productionRules
             Set.add rule (Set.unionMany childRules)
