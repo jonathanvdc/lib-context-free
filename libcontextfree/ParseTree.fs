@@ -10,31 +10,28 @@ type ParseTree<'Nonterminal, 'Terminal> =
     | ProductionNode of 'Nonterminal * ParseTree<'Nonterminal, 'Terminal> list
 
 module ParseTreeHelpers =
-    /// Computes the yield of a parse tree.
-    let rec treeYield (tree : ParseTree<'a, 'b>) : string =
+    /// Computes the yield of a parse tree, which is a list of terminals.
+    let rec treeYield (tree : ParseTree<'a, 'b>) : 'b list =
         match tree with
         | TerminalLeaf x        -> 
             // The yield of a terminal is the terminal's string representation.
-            // Note: I'm casting `x` to `obj` here, because the `string` function
-            //       requires a concrete type to operate on. Not doing that here causes
-            //       fsc to unify `'b` and `obj`.
-            string(x :> obj)
+            [x]
         | ProductionNode(_, xs) -> 
             // The yield of a production rule node is the concatenation of
             // its children's yields.
             xs |> List.map treeYield 
-               |> List.fold (+) ""
+               |> List.concat
 
-    /// Computes a parse tree's "head", i.e. the string representation of
-    /// its root node.
-    let treeHead (tree : ParseTree<'a, 'b>) : string =
+    /// Gets a parse tree's "head", i.e. the terminal or nonterminal
+    /// in the root node.
+    let treeHead (tree : ParseTree<'a, 'b>) : Either<'a, 'b> =
         match tree with
         | TerminalLeaf x       ->
             // The head of a terminal leaf is the terminal's string representation.
-            string(x :> obj)
+            Right x
         | ProductionNode(x, _) -> 
             // The head of a production rule node is the associated nonterminal.
-            string(x :> obj)
+            Left x
 
     /// Performs a single derivation: a single nonterminal node (selected from the node list by the `splitAt` function)
     /// is replaced by its children.
@@ -79,6 +76,26 @@ module ParseTreeHelpers =
         // and the parse tree is explicitly prepended.
         [tree] :: derivation splitAt [tree] 
 
+    /// Gets the set of production rules that are used in this parse tree.
+    let rec productionRules (tree : ParseTree<'a, 'b>) : ProductionRule<'a, 'b> Set =
+        match tree with
+        | TerminalLeaf _ -> Set.empty
+        | ProductionNode(head, items) -> 
+            let body = items |> List.map (fun x -> match x with
+                                                   | TerminalLeaf y       -> Right y
+                                                   | ProductionNode(y, _) -> Left y)
+            let rule = ProductionRule(head, body)
+            items |> List.fold (fun result item -> productionRules item |> Set.union result) (Set.singleton rule)
+
+    /// Gets a string representation for a parse tree's "head", 
+    /// i.e. the terminal or nonterminal in the root node.
+    let showTreeHead<'a, 'b> : ParseTree<'a, 'b> -> string = 
+        treeHead >> string
+
+    /// Get a string representation for the yield of a parse tree.
+    let showTreeYield<'a, 'b> : ParseTree<'a, 'b> -> string = 
+        treeYield >> string
+
     /// Gets a string representation for the given tree's entire derivation 
     /// sequence, including the input tree itself. 
     /// Nonterminal nodes are replaced by the given split-at function.
@@ -86,7 +103,7 @@ module ParseTreeHelpers =
         // First, every step in the derivation sequence is converted to the
         // concatenation of its trees' head strings.
         // Then, the results of that operation are joined with the " => " separator.
-        derivationSequence splitAt tree |> List.map (List.map treeHead >> List.fold (+) "")
+        derivationSequence splitAt tree |> List.map (List.map showTreeHead >> List.fold (+) "")
                                         |> String.concat " => "
 
     /// Gets a string representation for the given tree's entire leftmost derivation 
@@ -98,3 +115,8 @@ module ParseTreeHelpers =
     /// sequence, including the input tree itself. 
     let showRightmostDerivationSequence<'a, 'b> : ParseTree<'a, 'b> -> string = 
         showDerivationSequence ListHelpers.splitAtLast
+
+    /// Gets a string representation of the set of production rules that are used in this parse tree.
+    let showProductionRules (tree : ParseTree<'a, 'b>) : string =
+        productionRules tree |> Seq.mapi (fun index item -> (string index) + ". " + (string item))
+                             |> String.concat (System.Environment.NewLine)
