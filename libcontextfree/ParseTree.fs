@@ -14,7 +14,7 @@ module ParseTreeHelpers =
     let rec treeYield (tree : ParseTree<'a, 'b>) : 'b list =
         match tree with
         | TerminalLeaf x        -> 
-            // The yield of a terminal is the terminal's string representation.
+            // The yield of a terminal is the terminal itself.
             [x]
         | ProductionNode(_, xs) -> 
             // The yield of a production rule node is the concatenation of
@@ -27,7 +27,7 @@ module ParseTreeHelpers =
     let treeHead (tree : ParseTree<'a, 'b>) : Either<'a, 'b> =
         match tree with
         | TerminalLeaf x       ->
-            // The head of a terminal leaf is the terminal's string representation.
+            // The head of a terminal leaf is the terminal itself.
             Right x
         | ProductionNode(x, _) -> 
             // The head of a production rule node is the associated nonterminal.
