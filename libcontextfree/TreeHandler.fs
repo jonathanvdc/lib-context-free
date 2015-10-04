@@ -5,7 +5,7 @@ open System.IO
 open IOHelpers
 
 module TreeHandler =
-    /// Checks if the given character belongs to a word in a parse tree file.
+    /// Checks if the given character belongs to an atom in a parse tree file.
     let isAtomChar (c : char) : bool = 
         c <> '(' && c <> ')' && not(Char.IsWhiteSpace(c))
 
@@ -18,7 +18,7 @@ module TreeHandler =
         | Some c    -> c :: readAtomAsList reader
         | None      -> []
 
-    /// Reads a word as a string.
+    /// Reads an atom as a string.
     let readAtom (reader : TextReader) : string =
         new System.String(readAtomAsList reader |> Array.ofList)
 

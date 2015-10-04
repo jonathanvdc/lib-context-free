@@ -45,7 +45,7 @@ module GraphvizHandler =
             writeLabel writer n
             match items with
             | [] ->
-                // Production node with empty bodies
+                // Production nodes with empty bodies
                 // are mapped to epsilon production rules.
                 // They are visualized in graphviz by  
                 // inserting an epsilon node.
