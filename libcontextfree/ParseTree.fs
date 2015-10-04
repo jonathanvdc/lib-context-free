@@ -94,7 +94,8 @@ module ParseTreeHelpers =
 
     /// Get a string representation for the yield of a parse tree.
     let showTreeYield<'a, 'b> : ParseTree<'a, 'b> -> string = 
-        treeYield >> string
+        treeYield >> Seq.map (fun x -> x.ToString()) 
+                  >> Seq.fold (+) ""
 
     /// Gets a string representation for the given tree's entire derivation 
     /// sequence, including the input tree itself. 
