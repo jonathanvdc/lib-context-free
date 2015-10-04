@@ -49,8 +49,10 @@ module GraphvizHandler =
                 // are mapped to epsilon production rules.
                 // They are visualized in graphviz by  
                 // inserting an epsilon node.
+                writeIndentation writer
                 writer.Write(startIndex + 1)
                 writeLabel writer "&epsilon;"
+                writeIndentation writer
                 writeEdge writer startIndex (startIndex + 1)
                 startIndex + 2
             | _  ->
