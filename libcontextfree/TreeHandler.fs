@@ -57,7 +57,7 @@ module TreeHandler =
 
     /// Is the given character special (i.e. should it be escaped) in an S-expression?
     let isSpecialSexp (c : char) : bool =
-        (c = '(') || (c = ')') || (c = '\\')
+        (c = '(') || (c = ')') || (c = '\\') || Char.IsWhiteSpace c
 
     /// Escape S-expression-special characters (parentheses and backslashes) in a string.
     let escapeSexp (s : string) : string =
