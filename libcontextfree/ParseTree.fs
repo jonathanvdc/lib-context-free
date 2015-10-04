@@ -81,9 +81,7 @@ module ParseTreeHelpers =
         match tree with
         | TerminalLeaf _ -> Set.empty
         | ProductionNode(head, items) -> 
-            let body = items |> List.map (fun x -> match x with
-                                                   | TerminalLeaf y       -> Right y
-                                                   | ProductionNode(y, _) -> Left y)
+            let body = items |> List.map treeHead
             let rule = ProductionRule(head, body)
             items |> List.fold (fun result item -> productionRules item |> Set.union result) (Set.singleton rule)
 
