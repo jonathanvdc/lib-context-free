@@ -36,16 +36,11 @@ module TreeHandler =
         match readConditional ((=) '(') reader with
         | Some _ -> 
             skipWhitespace reader
-            match readConditional ((=) ')') reader with
-            | Some _ -> 
-                // Epsilon node syntax: ()
-                Some EpsilonLeaf
-            | None   ->
-                // Production node syntax: (<nonterminal> <nodes...>)
-                let nonterm = readAtom reader
-                let children = readNodes reader
-                ignore(readChar reader)
-                Some(ProductionNode(nonterm, children))
+            // Production node syntax: (<nonterminal> <nodes...>)
+            let nonterm = readAtom reader
+            let children = readNodes reader
+            ignore(readChar reader)
+            Some(ProductionNode(nonterm, children))
         | None -> 
             if peekSatisfies isAtomChar reader then
                 // Terminal node syntax: <terminal>

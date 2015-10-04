@@ -36,10 +36,6 @@ module GraphvizHandler =
         writeIndentation writer
         writer.Write(startIndex)
         match node with
-        | EpsilonLeaf              -> 
-            // Writes the epsilon leaf's label, which is "&epsilon;" here.
-            writeLabel writer "&epsilon;"
-            startIndex + 1
         | TerminalLeaf t           ->
             // Writes the terminal leaf's label, which is a terminal.
             writeLabel writer t
@@ -47,16 +43,27 @@ module GraphvizHandler =
         | ProductionNode(n, items) ->
             // Writes the node's label, which is a nonterminal.
             writeLabel writer n
-            let foldNode index item =
-                // Writes a child node to the output stream.
-                let nextIndex = writeGraphvizNode writer index item
-                // Write some indentation and an edge definition to the text writer.
-                writeIndentation writer
-                writeEdge writer startIndex index
-                nextIndex
-            // Writes this production node's children.
-            // They are folded one by one using the folding function above.
-            items |> List.fold foldNode (startIndex + 1)
+            match items with
+            | [] ->
+                // Production node with empty bodies
+                // are mapped to epsilon production rules.
+                // They are visualized in graphviz by  
+                // inserting an epsilon node.
+                writer.Write(startIndex + 1)
+                writeLabel writer "&epsilon;"
+                writeEdge writer startIndex (startIndex + 1)
+                startIndex + 2
+            | _  ->
+                let foldNode index item =
+                    // Writes a child node to the output stream.
+                    let nextIndex = writeGraphvizNode writer index item
+                    // Write some indentation and an edge definition to the text writer.
+                    writeIndentation writer
+                    writeEdge writer startIndex index
+                    nextIndex
+                // Writes this production node's children.
+                // They are folded one by one using the folding function above.
+                items |> List.fold foldNode (startIndex + 1)
 
     /// Writes a graphviz file that represents the given parse tree to the given text writer.
     let writeGraphviz (writer : TextWriter) (node : ParseTree<string, string>) = 

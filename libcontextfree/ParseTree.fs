@@ -5,9 +5,6 @@ type ParseTree<'Nonterminal, 'Terminal> =
     /// Defines a terminal leaf, which is a type of parse tree that 
     /// contains only a single terminal.
     | TerminalLeaf of 'Terminal
-    /// Defines an epsilon leaf, which is a type of parse tree that
-    /// contains an epsilon value.
-    | EpsilonLeaf
     /// Defines a production rule node, which is identified by a nonterminal and a 
     /// list of child nodes.
     | ProductionNode of 'Nonterminal * ParseTree<'Nonterminal, 'Terminal> list
@@ -22,9 +19,6 @@ module ParseTreeHelpers =
             //       requires a concrete type to operate on. Not doing that here causes
             //       fsc to unify `'b` and `obj`.
             string(x :> obj)
-        | EpsilonLeaf           -> 
-            // The yield of an epsilon leaf is the empty string.
-            "" 
         | ProductionNode(_, xs) -> 
             // The yield of a production rule node is the concatenation of
             // its children's yields.
@@ -38,9 +32,6 @@ module ParseTreeHelpers =
         | TerminalLeaf x       ->
             // The head of a terminal leaf is the terminal's string representation.
             string(x :> obj)
-        | EpsilonLeaf          ->
-            // The head of an epsilon leaf is the empty string.
-            ""
         | ProductionNode(x, _) -> 
             // The head of a production rule node is the associated nonterminal.
             string(x :> obj)
