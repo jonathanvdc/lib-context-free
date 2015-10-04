@@ -54,3 +54,26 @@ module TreeHandler =
         match readNode reader with
         | Some node -> node :: readNodes(reader)
         | None      -> []
+
+    /// Is the given character special (i.e. should it be escaped) in an S-expression?
+    let isSpecialSexp (c : char) : bool =
+        (c = '(') || (c = ')') || (c = '\\')
+
+    /// Escape S-expression-special characters (parentheses and backslashes) in a string.
+    let escapeSexp (s : string) : string =
+        let escapeChar c =
+            let prefix = if isSpecialSexp c then "\\" else ""
+            prefix + Char.ToString c
+        String.collect escapeChar s
+
+    /// Writes a string representation of the given parse tree to the given text writer.
+    let rec writeTree (writer : TextWriter) (tree : ParseTree<string, string>) : unit =
+        match tree with
+        | TerminalLeaf t ->
+            writer.Write(escapeSexp t)
+        | ProductionNode (nt, children) -> do
+            writer.Write("(" + escapeSexp nt)
+            children |> List.iter (fun child ->
+                writer.Write(" ")
+                writeTree writer child)
+            writer.Write(")")
