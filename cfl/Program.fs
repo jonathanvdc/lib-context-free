@@ -63,6 +63,10 @@ let subprograms : Map<string, string list -> unit> =
                    // Insert additional subprograms here.
                ]
 
+/// Prints the list of registered subprograms.
+let printSubprogramList() : unit =
+    subprograms |> Seq.iter ((fun x -> x.Key) >> printfn " * %s")
+
 [<EntryPoint>]
 let main argv = 
     match List.ofArray argv with
@@ -70,10 +74,18 @@ let main argv =
         // If there is at least one command-line argument,
         // we'll run the subprogram belonging to the
         // first argument.
-        subprograms.[x] xs
+        match subprograms.TryFind x with
+        | Some func -> 
+            // We found a known subprogram.
+            func xs
+        | None ->
+            // `x`, whatever it was, was not a known subprogram.
+            printfn "Argument '%s' was not recognized as a known subprogram." x
+            printfn "List of subprograms:"
+            printSubprogramList()
     | _ ->
         // If no subprogram has been specified, all we can realistically do is
         // rage quit.
         printfn "%s" "Please specify a subprogram. List of subprograms:"
-        subprograms |> Seq.iter ((fun x -> x.Key) >> printfn " * %s")
+        printSubprogramList()
     0 // return an integer exit code
