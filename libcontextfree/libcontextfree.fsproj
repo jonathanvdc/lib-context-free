@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ListHelpers.fs" />
+    <Compile Include="Symbol.fs" />
     <Compile Include="ProductionRule.fs" />
     <Compile Include="ParseTree.fs" />
     <Compile Include="IOHelpers.fs" />
