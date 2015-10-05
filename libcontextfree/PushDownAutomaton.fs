@@ -57,11 +57,20 @@ type PushdownAutomaton<'Q, 'Σ, 'Γ when 'Q : comparison and 'Σ : comparison an
         match pda with
         | PushdownAutomaton(_, _, _, F) -> F
 
-module PushdownAutomaton =
+[<AutoOpen>]
+module PushdownAutomatonOps =
+    /// An active pattern that matches push-down automata,
+    /// including their sets of states, input symbols, and stack symbols.
+    ///
+    /// Usage:
+    ///     match x with
+    ///     | PDA(Q, Σ, Γ, δ, q0, Z0, F) -> ...
+    ///
     let (|PDA|) (pda : PushdownAutomaton<'Q, 'Σ, 'Γ>) =
         match pda with
         | PushdownAutomaton (δ, q0, Z0, F) -> (pda.Q, pda.Σ, pda.Γ, δ, q0, Z0, F)
 
+module PushdownAutomaton =
     /// Convert a context-free grammar to a pushdown automaton as per slide 75.
     /// TODO: tests!
     let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =

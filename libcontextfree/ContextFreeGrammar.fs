@@ -48,7 +48,7 @@ type ContextFreeGrammar<'nt, 't when 'nt : comparison and 't : comparison> =
         | ContextFreeGrammar(_, start) -> start
     
 [<AutoOpen>]
-module ContextFreeGrammar =
+module ContextFreeGrammarOps =
     /// An active pattern that matches context-free grammars,
     /// including their sets of nonterminals and terminals.
     ///
