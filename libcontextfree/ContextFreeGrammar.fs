@@ -58,3 +58,15 @@ module ContextFreeGrammarOps =
     ///
     let (|CFG|) (grammar : ContextFreeGrammar<'nt, 't>) =
         (grammar.V, grammar.T, grammar.P, grammar.S)
+
+module ContextFreeGrammar =
+    
+    /// Tries to infer the context-free grammar required to construct
+    /// the given parse tree. This can be done iff the head of the parse
+    /// tree is a production node. Otherwise, None is returned.
+    let ofParseTree (tree : ParseTree<'nt, 't>) : ContextFreeGrammar<'nt, 't> option =
+        match tree with
+        | ProductionNode(head, _) ->
+            Some(ContextFreeGrammar(ParseTree.productionRules tree, head))
+        | _                       ->
+            None
