@@ -6,3 +6,8 @@ type Symbol<'nt, 't> =
     | Nonterminal of 'nt
     /// Defines a terminal symbol.
     | Terminal of 't
+
+    override this.ToString() =
+        match this with
+        | Nonterminal nt -> nt.ToString()
+        | Terminal    t  -> t.ToString()

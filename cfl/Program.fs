@@ -23,6 +23,16 @@ let writeGraphvizFile (tree : ParseTree<string, string>) (fileName : string) : b
     with
     | _ -> false
 
+let writeCfgXmlFile (grammar : ContextFreeGrammar<char, char>) (fileName : string) : bool =
+    let xmlNode = XmlHandler.ofCfg grammar
+    try
+        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
+        xmlNode.XElement.Save(fs)
+        true
+    with
+    | _ -> false
+
+
 /// Defines a subprogram that prints the given property of the parse tree
 /// in file referred to by the single argument.
 let printTreeProperty (show : ParseTree<string, string> -> string) (argv : string list) =
@@ -58,6 +68,9 @@ let subprograms : Map<string, string list -> unit> =
                    "derive-leftmost", printTreeProperty ParseTree.showLeftmostDerivationSequence
                    "derive-rightmost", printTreeProperty ParseTree.showRightmostDerivationSequence
                    "tree-rules", printTreeProperty ParseTree.showProductionRules
+                   "tree-grammar", performReadWrite (readParseTreeFile >> Option.bind ContextFreeGrammar.ofParseTree 
+                                                                       >> Option.bind ContextFreeGrammar.toCharacterGrammar) 
+                                                    writeCfgXmlFile
                    "dot", performReadWrite readParseTreeFile writeGraphvizFile
                    // Insert additional subprograms here.
                ]
