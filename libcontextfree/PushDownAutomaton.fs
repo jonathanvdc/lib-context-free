@@ -42,16 +42,17 @@ type PushdownAutomaton<'Q, 'Σ, 'Γ when 'Q : comparison and 'Σ : comparison an
 
 module PushdownAutomaton =
     /// Convert a context-free grammar to a pushdown automaton as per slide 75.
-    let ofCFG = function
+    let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
+        function
         | ContextFreeGrammar (V, T, P, S) ->
             // Our only state.
             let q : unit = ()
 
             let δ : Transition<unit, 't, Symbol<'nt, 't>> =
-                // The definition of δ for nonterminals.
+                // The definition of δ for nonterminals:
                 let δ1 = seq [for ProductionRule(A, β) in P ->
                               ((q, None, Nonterminal A), Set.singleton (q, β))]
-                // The definition of δ for terminals.
+                // The definition of δ for terminals:
                 let δ2 = seq [for t in T ->
                               ((q, Some t, Terminal t), Set.singleton (q, []))]
                 // δ is their union.
