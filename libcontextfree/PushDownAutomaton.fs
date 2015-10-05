@@ -42,9 +42,9 @@ module PushDownAutomaton =
                 match word with
                 | [] -> ps
                 | (a::w) ->
-                    go w (step (Some a) ps) |> eclose
+                    go w (step (Some a) ps |> eclose)
 
-            go input (Set.singleton (q0, [Z0]))
+            go input (Set.singleton (q0, [Z0]) |> eclose)
 
     let reachesFinalState (pda : PushDownAutomaton<'Q, 'Σ, 'Γ>) (input : 'Σ list) : bool =
         match pda with
