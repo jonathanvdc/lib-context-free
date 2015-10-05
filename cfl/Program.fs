@@ -1,5 +1,4 @@
 ﻿open libcontextfree
-open ParseTreeHelpers
 open System
 open System.IO
 
@@ -54,11 +53,11 @@ let performReadWrite (read : string -> 'a option) (write : 'a -> string -> bool)
 /// procedures that take a list of strings.
 let subprograms : Map<string, string list -> unit> = 
     Map.ofList [
-                   "head", printTreeProperty showTreeHead
-                   "yield", printTreeProperty showTreeYield
-                   "derive-leftmost", printTreeProperty showLeftmostDerivationSequence
-                   "derive-rightmost", printTreeProperty showRightmostDerivationSequence
-                   "tree-rules", printTreeProperty showProductionRules
+                   "head", printTreeProperty ParseTree.showTreeHead
+                   "yield", printTreeProperty ParseTree.showTreeYield
+                   "derive-leftmost", printTreeProperty ParseTree.showLeftmostDerivationSequence
+                   "derive-rightmost", printTreeProperty ParseTree.showRightmostDerivationSequence
+                   "tree-rules", printTreeProperty ParseTree.showProductionRules
                    "dot", performReadWrite readParseTreeFile writeGraphvizFile
                    // Insert additional subprograms here.
                ]

@@ -9,7 +9,7 @@ type ParseTree<'nt, 't> =
     /// list of child nodes.
     | ProductionNode of 'nt * ParseTree<'nt, 't> list
 
-module ParseTreeHelpers =
+module ParseTree =
     /// Computes the yield of a parse tree, which is a list of terminals.
     let rec treeYield (tree : ParseTree<'nt, 't>) : 't list =
         match tree with
