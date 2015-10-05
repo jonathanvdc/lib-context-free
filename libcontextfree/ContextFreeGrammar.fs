@@ -70,3 +70,51 @@ module ContextFreeGrammar =
             Some(ContextFreeGrammar(ParseTree.productionRules tree, head))
         | _                       ->
             None
+
+    /// Applies the given nonterminal and terminal mapping functions to the given symbol.
+    let mapSymbol (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) (sym : Symbol<'nt1, 't1>) : Symbol<'nt2, 't2> =
+        match sym with
+        | Nonterminal nt -> Nonterminal (f nt)
+        | Terminal t     -> Terminal    (g t)
+
+    /// Applies the given nonterminal and terminal mapping functions to the given grammar.
+    let mapGrammar (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) (grammar : ContextFreeGrammar<'nt1, 't1>) : ContextFreeGrammar<'nt2, 't2> =
+        match grammar with 
+        | ContextFreeGrammar(P1, S1) ->
+            let convertRule (ProductionRule(head, body)) : ProductionRule<'nt2, 't2> = 
+                ProductionRule(f head, body |> List.map (mapSymbol f g))
+            let P2 = Set.map convertRule P1
+            let S2 = f S1
+            ContextFreeGrammar(P2, S2)
+
+    /// Tries to convert the given grammar, which operates on strings, to an
+    /// equivalent grammar that operates on characters.
+    /// Nonterminals may have their name changed, but terminals will never be modified.
+    /// If the given grammar uses a terminal of any length other than one, the algorithm will
+    /// fail, and None is returned.
+    let toCharacterGrammar (grammar : ContextFreeGrammar<string, string>) : ContextFreeGrammar<char, char> option =
+        // Checks if the given sequence of strings contains one or more
+        // strings whose length is not equal to one.
+        let containsStrings : seq<string> -> bool = 
+            Seq.exists (String.length >> ((<>) 1))
+
+        match grammar with
+        | CFG(V, T, P, S) ->
+            if containsStrings T then
+                None // If there is a string with any length other than one,
+                     // we can't perform this operation. Return None.
+            else
+                let vMap = if containsStrings V then
+                               // We can just rename nonterminals, because nonterminal names
+                               // don't have any observable effect on the grammar's language. 
+                               V |> Seq.mapi (fun i str -> str, char (i + int 'A'))
+                                 |> Map.ofSeq
+                           else
+                               // If at all possible, we should re-use the old nonterminal names.
+                               V |> Seq.map (fun str -> str, Seq.exactlyOne str)
+                                 |> Map.ofSeq
+                let convTerminal : string -> char =
+                    Seq.exactlyOne
+                let convNonterminal (nt : string) : char = 
+                    vMap.[nt]
+                Some (mapGrammar convNonterminal Seq.exactlyOne grammar)

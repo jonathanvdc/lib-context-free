@@ -23,6 +23,7 @@ module XmlHandler =
 
     type CFGFile = XmlProvider<CfgXmlSample>
 
+    /// Creates a CFG XML node from the given context-free grammar.
     let ofCfg (cfg : ContextFreeGrammar<char, char>) : CFGFile.Cfg =
         let setToString (xs : Set<char>) =
             xs |> Seq.map string 
@@ -41,6 +42,8 @@ module XmlHandler =
         let productions = CFGFile.Productions(rules)
         CFGFile.Cfg(variables, terminals, productions)
 
+    /// Tries to convert the given CFG XML node to a context-free grammar.
+    /// If this cannot be done, None is returned.
     let toCfg (input : CFGFile.Cfg) : ContextFreeGrammar<char, char> option =
         let terminals = input.Terminals |> Set.ofSeq
 
