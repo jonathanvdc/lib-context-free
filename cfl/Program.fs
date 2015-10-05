@@ -51,7 +51,7 @@ let performReadWrite (read : string -> 'a option) (write : 'a -> string -> bool)
     match argv with
     | [inputFileName; outputFileName] ->
         match read inputFileName with
-        | None       -> printfn "%s" ("Could not read contents of file '" + inputFileName + "'.")
+        | None       -> printfn "%s" ("Contents of file '" + inputFileName + "' could not be read or were in an invalid format.")
         | Some input -> 
             if not(write input outputFileName) then
                 printfn "%s" ("Could not write data to file '" + outputFileName + "'.")
