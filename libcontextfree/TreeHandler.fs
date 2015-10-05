@@ -27,8 +27,6 @@ module TreeHandler =
         if peekSatisfies Char.IsWhiteSpace reader then
             ignore(readChar reader)
             skipWhitespace reader
-        else
-            ()
 
     /// Reads a parse tree node from the given text reader.
     let rec readNode (reader : TextReader) : ParseTree<string, string> option =
