@@ -43,9 +43,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ListHelpers.fs" />
+    <Compile Include="MapHelpers.fs" />
     <Compile Include="Symbol.fs" />
     <Compile Include="ProductionRule.fs" />
     <Compile Include="ParseTree.fs" />
+    <Compile Include="ContextFreeGrammar.fs" />
+    <Compile Include="PushDownAutomaton.fs" />
     <Compile Include="IOHelpers.fs" />
     <Compile Include="TreeHandler.fs" />
     <Compile Include="GraphvizHandler.fs" />

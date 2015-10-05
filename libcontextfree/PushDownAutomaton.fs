@@ -41,7 +41,27 @@ type PushdownAutomaton<'Q, 'Σ, 'Γ when 'Q : comparison and 'Σ : comparison an
                 Set.add γ (Set.ofSeq γs)
             δ |> Seq.map extractΓ |> Set.unionMany
 
+    member pda.δ : Transition<'Q, 'Σ, 'Γ> =
+        match pda with
+        | PushdownAutomaton(δ, _, _, _) -> δ
+
+    member pda.q0 : 'Q =
+        match pda with
+        | PushdownAutomaton(_, q0, _, _) -> q0
+
+    member pda.Z0 : 'Γ =
+        match pda with
+        | PushdownAutomaton(_, _, Z0, _) -> Z0
+
+    member pda.F : Set<'Q> =
+        match pda with
+        | PushdownAutomaton(_, _, _, F) -> F
+
 module PushdownAutomaton =
+    let (|PDA|) (pda : PushdownAutomaton<'Q, 'Σ, 'Γ>) =
+        match pda with
+        | PushdownAutomaton (δ, q0, Z0, F) -> (pda.Q, pda.Σ, pda.Γ, δ, q0, Z0, F)
+
     /// Convert a context-free grammar to a pushdown automaton as per slide 75.
     /// TODO: tests!
     let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
