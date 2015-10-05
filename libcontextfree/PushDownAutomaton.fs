@@ -46,7 +46,7 @@ module PushdownAutomaton =
     /// TODO: tests!
     let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
         function
-        | ContextFreeGrammar (V, T, P, S) ->
+        | CFG (V, T, P, S) ->
             // Our only state.
             let q : unit = ()
 
