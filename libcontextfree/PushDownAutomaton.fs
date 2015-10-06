@@ -161,8 +161,8 @@ module PushdownAutomaton =
             let δ3 = seq {
                 for KeyValue((q, a, Y), v) in δF do
                     // Wrap the old state/symbol types.
-                    let v' = v |> Set.map (fun (p, γ) ->
-                                 (Some (Some p), List.map Some γ))
+                    let v' = v |> Set.map (fun (p, g) ->
+                                 (Some (Some p), List.map Some g))
                     yield ((Some (Some q), a, Some Y), v')
             }
 

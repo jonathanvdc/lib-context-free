@@ -17,6 +17,6 @@ type ProductionRule<'nt, 't> =
                 match body with
                 | [] -> "ε"
                 | _  -> body |> List.map showSymbol
-                             |> List.fold (+) ""
+                             |> String.concat ""
 
             head.ToString() + " -> " + bodyString

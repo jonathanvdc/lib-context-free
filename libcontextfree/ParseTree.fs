@@ -73,7 +73,7 @@ module ParseTree =
     let rec productionRules (tree : ParseTree<'nt, 't>) : ProductionRule<'nt, 't> Set =
         match tree with
         | TerminalLeaf _ -> Set.empty
-        | ProductionNode(head, children) -> 
+        | ProductionNode(head, children) ->
             let body = children |> List.map treeHead
             let rule = ProductionRule(head, body)
             let childRules = children |> List.map productionRules
@@ -86,8 +86,8 @@ module ParseTree =
 
     /// Get a string representation for the yield of a parse tree.
     let showTreeYield<'nt, 't> : ParseTree<'nt, 't> -> string = 
-        treeYield >> Seq.map (fun x -> x.ToString()) 
-                  >> Seq.fold (+) ""
+        treeYield >> Seq.map (fun x -> x.ToString())
+                  >> String.concat ""
 
     /// Gets a string representation for the given tree's entire derivation 
     /// sequence, including the input tree itself. 
@@ -96,7 +96,7 @@ module ParseTree =
         // First, every step in the derivation sequence is converted to the
         // concatenation of its trees' head strings.
         // Then, the results of that operation are joined with the " => " separator.
-        derivationSequence splitAt tree |> List.map (List.map showTreeHead >> List.fold (+) "")
+        derivationSequence splitAt tree |> List.map (List.map showTreeHead >> String.concat "")
                                         |> String.concat " => "
 
     /// Gets a string representation for the given tree's entire leftmost derivation 
@@ -111,5 +111,5 @@ module ParseTree =
 
     /// Gets a string representation of the set of production rules that are used in this parse tree.
     let showProductionRules (tree : ParseTree<'nt, 't>) : string =
-        productionRules tree |> Seq.mapi (fun index item -> (string index) + ". " + (string item))
+        productionRules tree |> Seq.mapi (fun index item -> string index + ". " + string item)
                              |> String.concat (System.Environment.NewLine)
