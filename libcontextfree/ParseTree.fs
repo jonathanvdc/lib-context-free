@@ -40,7 +40,7 @@ module ParseTree =
 
         // Try to split the list of input nodes at a production node.
         match splitAt getProductionNodeChildren nodes with
-        | None -> 
+        | None ->
             // Couldn't find a production node. 
             // Derivation cannot be performed.
             None
@@ -53,7 +53,7 @@ module ParseTree =
 
     /// Creates a list of node lists that is obtained by starting
     /// with a single node list, and then deriving one nonterminal
-    /// at a time until only a list of terminal/epsilon leaves remain. 
+    /// at a time until only a list of terminal leaves remain. 
     /// Said nonterminal is selected by the given split-at function.
     /// The input node list is not included in the result list.
     let rec derivation splitAt (nodes : ParseTree<'nt, 't> list) : ParseTree<'nt, 't> list list =
@@ -67,7 +67,7 @@ module ParseTree =
     let derivationSequence splitAt (tree : ParseTree<'nt, 't>) : ParseTree<'nt, 't> list list =
         // The derivation sequence for this parse tree is obtained, 
         // and the parse tree is explicitly prepended.
-        [tree] :: derivation splitAt [tree] 
+        [tree] :: derivation splitAt [tree]
 
     /// Gets the set of production rules that are used in this parse tree.
     let rec productionRules (tree : ParseTree<'nt, 't>) : ProductionRule<'nt, 't> Set =

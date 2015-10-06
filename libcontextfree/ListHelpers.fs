@@ -64,6 +64,6 @@ module ListHelpers =
     ///     = None
     ///
     let splitAtLast (pred : 'a -> 'b option)
-                     (items : 'a list)
-                     : ('a list * 'b * 'a list) option =
+                    (items : 'a list)
+                    : ('a list * 'b * 'a list) option =
         splitAtFirstOrder List.rev pred items
