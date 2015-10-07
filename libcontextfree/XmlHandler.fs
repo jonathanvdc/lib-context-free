@@ -44,7 +44,7 @@ module XmlHandler =
 
     /// Tries to convert the given CFG XML node to a context-free grammar.
     /// If this cannot be done, None is returned.
-    let toCfg (input : CFGFile.Cfg) : ContextFreeGrammar<char, char> option =
+    let toCfg (input : CFGFile.Cfg) : Result<ContextFreeGrammar<char, char>> =
         let terminals = input.Terminals |> Set.ofSeq
 
         let toSymbol c =
@@ -55,33 +55,26 @@ module XmlHandler =
 
         match input.Variables.StartSymbol |> Seq.toList with
         | [startSymbol] ->
-            let startSymbol = input.Variables.StartSymbol |> Seq.exactlyOne
-            let toRule (inputRule : CFGFile.Rule) : Set<ProductionRule<char, char>> option =
+            let toRule (inputRule : CFGFile.Rule) : Result<Set<ProductionRule<char, char>>> =
                 match inputRule.Lhs |> Seq.toList with
                 | [ruleHead] -> 
-                    inputRule.Rhs.Split('|') |> Seq.map (Seq.map toSymbol >> List.ofSeq)
-                                             |> Seq.map (fun body -> ProductionRule(ruleHead, body))
-                                             |> Set.ofSeq
-                                             |> Some
-                | _          ->
+                    Success (inputRule.Rhs.Split('|')
+                             |> Seq.map (fun body ->
+                                 let convertedBody = List.ofSeq (Seq.map toSymbol body)
+                                 ProductionRule(ruleHead, convertedBody))
+                             |> Set.ofSeq)
+                | _ ->
                     // There can be only one head symbol per production rule.
                     // Quit if this invariant is not respected.
-                    None 
+                    Error (sprintf "The rule '%s -> %s' in the given context-free grammar description \
+                                    contains more than one head symbol." inputRule.Lhs inputRule.Rhs)
 
-            let foldRule (state : Set<ProductionRule<char, char>> option) (inputRule : CFGFile.Rule) =
-                match state with
-                | Some result -> 
-                    match toRule inputRule with
-                    | Some newRules -> Some(Set.union newRules result)
-                    | None          -> None
-                | None        -> None
+            input.Productions.Rules
+            |> Array.toList
+            |> List.map toRule
+            |> Result.sequence
+            |> Result.map (fun rs -> ContextFreeGrammar(Set.unionMany rs, startSymbol))
 
-            match input.Productions.Rules |> Seq.fold foldRule (Some Set.empty) with
-            | Some rules ->
-                Some(ContextFreeGrammar(rules, startSymbol))
-            | None       ->
-                None
         | _ -> 
-            // There can be only one start symbol. 
-            // Quit if this invariant is not respected.
-            None 
+            Error "The given context-free grammar description contains \
+                   more than one start symbol."

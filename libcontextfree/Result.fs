@@ -16,10 +16,18 @@ module Result =
     let map (f : 'a -> 'b) (result : Result<'a>) : Result<'b> =
         bind (Success << f) result
 
+    /// Return a list of all given results, if they are all Successes; otherwise,
+    /// return the first error in the list.
+    let rec sequence : Result<'a> list -> Result<'a list> =
+        function
+        | []              -> Success []
+        | Success r :: rs -> map (fun xs -> r :: xs) (sequence rs)
+        | Error e   :: _  -> Error e
+
     /// Print an Error, or the result of applying a function to a Success value.
     /// Success and Error values are printed to stdout and stderr, respectively;
     /// in both cases, a newline is appended.
-    let printfnWith (f : 'a -> string) : Result<'a> -> unit =
+    let printWith (f : 'a -> string) : Result<'a> -> unit =
         function
         | Success a -> printfn "%s" (f a)
         | Error e -> eprintfn "%s" e
@@ -29,4 +37,3 @@ module Result =
         function
         | Success a -> ()
         | Error e -> eprintfn "%s" e
-
