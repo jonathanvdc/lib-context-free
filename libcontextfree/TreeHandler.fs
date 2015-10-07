@@ -7,7 +7,7 @@ open IOHelpers
 module TreeHandler =
     /// Checks if the given character belongs to an atom in a parse tree file.
     let isAtomChar (c : char) : bool = 
-        c <> '(' && c <> ')' && not(Char.IsWhiteSpace(c))
+        (c <> '(') && (c <> ')') && not (Char.IsWhiteSpace c)
 
     /// Reads a word as a list of characters.
     let rec readAtomAsList (reader : TextReader) : char list =
@@ -25,33 +25,33 @@ module TreeHandler =
     /// Skips all leading whitespace in the text reader.
     let rec skipWhitespace (reader : TextReader) : unit =
         if peekSatisfies Char.IsWhiteSpace reader then
-            ignore(readChar reader)
+            ignore (readChar reader)
             skipWhitespace reader
 
-    /// Reads a parse tree node from the given text reader.
-    let rec readNode (reader : TextReader) : ParseTree<string, string> option =
+    /// Tries to read a parse tree node from the given text reader.
+    let rec readNode (reader : TextReader) : Result<ParseTree<string, string>> =
         skipWhitespace reader
         match readConditional ((=) '(') reader with
-        | Some _ -> 
+        | Some _ ->
             skipWhitespace reader
             // Production node syntax: (<nonterminal> <nodes...>)
-            let nonterm = readAtom reader
+            let nonterminal = readAtom reader
             let children = readNodes reader
-            ignore(readChar reader)
-            Some(ProductionNode(nonterm, children))
+            ignore (readChar reader)
+            Success (ProductionNode(nonterminal, children))
         | None -> 
             if peekSatisfies isAtomChar reader then
                 // Terminal node syntax: <terminal>
                 let terminal = readAtom reader
-                Some (TerminalLeaf terminal)
+                Success (TerminalLeaf terminal)
             else
-                None
+                Error "Couldn't parse the given parse tree."
 
     /// Reads a list of parse tree nodes from the given text reader.
-    and readNodes (reader : TextReader) =
+    and readNodes (reader : TextReader)  =
         match readNode reader with
-        | Some node -> node :: readNodes(reader)
-        | None      -> []
+        | Success node -> node :: readNodes reader
+        | Error _      -> []
 
     /// Is the given character special (i.e. should it be escaped) in an S-expression?
     let isSpecialSexp (c : char) : bool =

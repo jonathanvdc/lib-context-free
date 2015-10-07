@@ -55,15 +55,15 @@ module ContextFreeGrammar =
     /// Tries to infer the context-free grammar required to construct
     /// the given parse tree. This can be done iff the head of the parse
     /// tree is a production node. Otherwise, None is returned.
-    let ofParseTree (tree : ParseTree<'nt, 't>) : ContextFreeGrammar<'nt, 't> option =
+    let ofParseTree (tree : ParseTree<'nt, 't>) : Result<ContextFreeGrammar<'nt, 't>> =
         match tree with
         | ProductionNode(head, _) ->
-            Some(ContextFreeGrammar(ParseTree.productionRules tree, head))
+            Success (ContextFreeGrammar(ParseTree.productionRules tree, head))
         | TerminalLeaf _ ->
-            None
+            Error "Cannot infer a context-free grammar from a terminal leaf."
 
     /// Applies the given nonterminal and terminal mapping functions to the given grammar.
-    let map (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) (grammar : ContextFreeGrammar<'nt1, 't1>) : ContextFreeGrammar<'nt2, 't2> =
+    let symbolMap (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) (grammar : ContextFreeGrammar<'nt1, 't1>) : ContextFreeGrammar<'nt2, 't2> =
         match grammar with 
         | ContextFreeGrammar(P1, S1) ->
             // Converts a single production rule.
@@ -79,30 +79,30 @@ module ContextFreeGrammar =
     /// Nonterminals may have their name changed, but terminals will never be modified.
     /// If the given grammar uses a terminal of any length other than one, the algorithm will
     /// fail, and None is returned.
-    let toCharacterGrammar (grammar : ContextFreeGrammar<string, string>) : ContextFreeGrammar<char, char> option =
-        // Checks if the given sequence of strings contains one or more
-        // strings whose length is not equal to one.
-        let containsStrings : seq<string> -> bool = 
-            Seq.exists (fun s -> String.length s <> 1)
+    let toCharacterGrammar (grammar : ContextFreeGrammar<string, string>) : Result<ContextFreeGrammar<char, char>> =
+        // Find strings whose length is not equal to one.
+        let invalidStrings : seq<string> -> seq<string> = 
+            Seq.filter (fun s -> String.length s <> 1)
 
         match grammar with
         | CFG(V, T, P, S) ->
-            if containsStrings T then
-                // If there is a string with any length other than one,
-                // we can't perform this operation.
-                None
-            else
+            // TODO: pattern match and give a decent error message.
+            let invalidTerminals = invalidStrings T
+            if Seq.isEmpty invalidTerminals then
                 let nonterminalMap =
-                    if containsStrings V then
+                    if Seq.isEmpty (invalidStrings V) then
+                        // If at all possible, we should re-use the old nonterminal names.
+                        V |> Seq.map (fun str -> str, Seq.exactlyOne str)
+                          |> Map.ofSeq
+                    else
                         // We can just rename nonterminals, because nonterminal names
                         // don't have any observable effect on the grammar's language. 
                         V |> Seq.mapi (fun i str -> str, char (i + int 'A'))
                           |> Map.ofSeq
-                    else
-                        // If at all possible, we should re-use the old nonterminal names.
-                        V |> Seq.map (fun str -> str, Seq.exactlyOne str)
-                          |> Map.ofSeq
-                
                 let convNonterminal (nt : string) : char = nonterminalMap.[nt]
                 let convTerminal    (t : string)  : char = Seq.exactlyOne t
-                Some (map convNonterminal convTerminal grammar)
+                Success (symbolMap convNonterminal convTerminal grammar)
+            else
+                // If there is a string with any length other than one,
+                // we can't perform this operation.
+                Error (sprintf "Couldn't convert CFG: it contains invalid terminals %A." invalidTerminals)

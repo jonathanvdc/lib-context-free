@@ -3,77 +3,73 @@ open System
 open System.IO
 
 /// Tries to read a file that contains a parse tree. If something goes wrong,
-/// None is returned.
-let readParseTreeFile (fileName : string) : ParseTree<string, string> option =
+/// log an error.
+let readParseTreeFile (fileName : string) : Result<ParseTree<string, string>> =
     try
         use fs = new FileStream(fileName, FileMode.Open, FileAccess.Read)
         use reader = new StreamReader(fs)
         TreeHandler.readNode reader
     with
-    | _ -> None
+    | _ -> Error (sprintf "Couldn't open file for reading: '%s'." fileName)
+
+/// Perform a file write action that fails with a helpful error message.
+let writeFile (fileName : string) (action : FileStream -> unit) : Result<unit> =
+    try
+        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
+        action fs
+        Success ()
+    with
+    | _ ->  Error (sprintf "Couldn't open file for writing: '%s'." fileName)
 
 /// Tries to write the given parse tree to the given output file.
-/// A boolean is returned that indicates success or failure.
-let writeGraphvizFile (tree : ParseTree<string, string>) (fileName : string) : bool =
-    try
-        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
+let writeGraphvizFile (fileName : string) (tree : ParseTree<string, string>) : Result<unit> =
+    writeFile fileName <| fun fs ->
         use writer = new StreamWriter(fs)
         GraphvizHandler.writeGraphviz writer tree
-        true
-    with
-    | _ -> false
 
-let writeCfgXmlFile (grammar : ContextFreeGrammar<char, char>) (fileName : string) : bool =
+/// Tries to write the given character CFG to the given output file.
+let writeCfgXmlFile (fileName : string) (grammar : ContextFreeGrammar<char, char>) : Result<unit> =
     let xmlNode = XmlHandler.ofCfg grammar
-    try
-        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
-        xmlNode.XElement.Save(fs)
-        true
-    with
-    | _ -> false
-
+    writeFile fileName (fun fs -> xmlNode.XElement.Save(fs))
 
 /// Defines a subprogram that prints the given property of the parse tree
 /// in file referred to by the single argument.
 let printTreeProperty (show : ParseTree<string, string> -> string) (argv : string list) =
     match argv with
     | [fileName] ->
-        match readParseTreeFile fileName with
-        | None ->
-            printfn "%s" ("Could not read parse tree file '" + fileName + "'.")
-        | Some tree ->
-            printfn "%s" (show tree)
-    | _          ->
-        printfn "%s" "The specified subprogram takes exactly one argument: the file name of the parse tree file."
+        Result.printfnWith show (readParseTreeFile fileName)
+    | _ ->
+        printfn "The specified subprogram takes exactly one argument: the file name of the parse tree file."
 
 /// Defines a subprogram function that reads input from a file, and writes it to another file.
-let performReadWrite (read : string -> 'a option) (write : 'a -> string -> bool) (argv : string list) =
+let performReadWrite (read : string -> Result<'a>) (write : string -> 'a -> Result<unit>) (argv : string list) =
     match argv with
     | [inputFileName; outputFileName] ->
-        match read inputFileName with
-        | None       -> printfn "%s" ("Contents of file '" + inputFileName + "' could not be read or were in an invalid format.")
-        | Some input -> 
-            if not(write input outputFileName) then
-                printfn "%s" ("Could not write data to file '" + outputFileName + "'.")
-    | _                               ->
-        printfn "%s" "The specified subprogram takes exactly two arguments: the input and output file names."
+        Result.eprintf (read inputFileName |> Result.bind (write outputFileName))
+    | _ ->
+        printfn "The specified subprogram takes exactly two arguments: the input and output file names."
+
+
+let readTreeGrammar (fileName : string) : Result<ContextFreeGrammar<char, char>> =
+    readParseTreeFile fileName
+    |> Result.bind ContextFreeGrammar.ofParseTree 
+    |> Result.bind ContextFreeGrammar.toCharacterGrammar
 
 /// Gets the program's list of "subprograms",
 /// which are really just pairs of strings and 
 /// procedures that take a list of strings.
 let subprograms : Map<string, string list -> unit> = 
     Map.ofList [
-                   "head", printTreeProperty ParseTree.showTreeHead
-                   "yield", printTreeProperty ParseTree.showTreeYield
-                   "derive-leftmost", printTreeProperty ParseTree.showLeftmostDerivationSequence
-                   "derive-rightmost", printTreeProperty ParseTree.showRightmostDerivationSequence
-                   "tree-rules", printTreeProperty ParseTree.showProductionRules
-                   "tree-grammar", performReadWrite (readParseTreeFile >> Option.bind ContextFreeGrammar.ofParseTree 
-                                                                       >> Option.bind ContextFreeGrammar.toCharacterGrammar) 
-                                                    writeCfgXmlFile
-                   "dot", performReadWrite readParseTreeFile writeGraphvizFile
-                   // Insert additional subprograms here.
-               ]
+        "head", printTreeProperty ParseTree.showTreeHead
+        "yield", printTreeProperty ParseTree.showTreeYield
+        "derive-leftmost", printTreeProperty ParseTree.showLeftmostDerivationSequence
+        "derive-rightmost", printTreeProperty ParseTree.showRightmostDerivationSequence
+        "tree-rules", printTreeProperty ParseTree.showProductionRules
+        "tree-grammar", performReadWrite readTreeGrammar
+                                         writeCfgXmlFile
+        "dot", performReadWrite readParseTreeFile writeGraphvizFile
+        // Insert additional subprograms here.
+    ]
 
 /// Prints the list of registered subprograms.
 let printSubprogramList() : unit =
