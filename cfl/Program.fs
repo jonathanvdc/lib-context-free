@@ -2,6 +2,9 @@
 open System
 open System.IO
 
+/// Print a string, followed by a newline.
+let print = printfn "%s"
+
 /// Tries to read a file that contains a parse tree. If something goes wrong,
 /// log an error.
 let readParseTreeFile (fileName : string) : Result<ParseTree<string, string>> =
@@ -37,9 +40,9 @@ let writeCfgXmlFile (fileName : string) (grammar : ContextFreeGrammar<char, char
 let printTreeProperty (show : ParseTree<string, string> -> string) (argv : string list) =
     match argv with
     | [fileName] ->
-        Result.printfnWith show (readParseTreeFile fileName)
+        Result.printWith show (readParseTreeFile fileName)
     | _ ->
-        printfn "The specified subprogram takes exactly one argument: the file name of the parse tree file."
+        print "The specified subprogram takes exactly one argument: the file name of the parse tree file."
 
 /// Defines a subprogram function that reads input from a file, and writes it to another file.
 let performReadWrite (read : string -> Result<'a>) (write : string -> 'a -> Result<unit>) (argv : string list) =
@@ -47,7 +50,7 @@ let performReadWrite (read : string -> Result<'a>) (write : string -> 'a -> Resu
     | [inputFileName; outputFileName] ->
         Result.eprintf (read inputFileName |> Result.bind (write outputFileName))
     | _ ->
-        printfn "The specified subprogram takes exactly two arguments: the input and output file names."
+        print "The specified subprogram takes exactly two arguments: the input and output file names."
 
 
 let readTreeGrammar (fileName : string) : Result<ContextFreeGrammar<char, char>> =
@@ -65,15 +68,14 @@ let subprograms : Map<string, string list -> unit> =
         "derive-leftmost", printTreeProperty ParseTree.showLeftmostDerivationSequence
         "derive-rightmost", printTreeProperty ParseTree.showRightmostDerivationSequence
         "tree-rules", printTreeProperty ParseTree.showProductionRules
-        "tree-grammar", performReadWrite readTreeGrammar
-                                         writeCfgXmlFile
+        "tree-grammar", performReadWrite readTreeGrammar writeCfgXmlFile
         "dot", performReadWrite readParseTreeFile writeGraphvizFile
         // Insert additional subprograms here.
     ]
 
 /// Prints the list of registered subprograms.
-let printSubprogramList() : unit =
-    subprograms |> Seq.iter ((fun x -> x.Key) >> printfn " * %s")
+let printSubprogramList () : unit =
+    subprograms |> Seq.iter (fun x -> printfn " * %s" x.Key)
 
 [<EntryPoint>]
 let main argv = 
@@ -89,11 +91,11 @@ let main argv =
         | None ->
             // `x`, whatever it was, was not a known subprogram.
             printfn "Argument '%s' was not recognized as a known subprogram." x
-            printfn "List of subprograms:"
-            printSubprogramList()
+            print "List of subprograms:"
+            printSubprogramList ()
     | _ ->
         // If no subprogram has been specified, all we can realistically do is
         // rage quit.
-        printfn "%s" "Please specify a subprogram. List of subprograms:"
-        printSubprogramList()
+        print "Please specify a subprogram. List of subprograms:"
+        printSubprogramList ()
     0 // return an integer exit code
