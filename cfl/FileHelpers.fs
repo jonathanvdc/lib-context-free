@@ -66,7 +66,18 @@ let printTreeProperty (show : ParseTree<string, string> -> string) (argv : strin
     | [fileName] ->
         Result.printWith show (readParseTreeFile fileName)
     | _ ->
-        eprint "The specified subprogram takes exactly one argument: the file name of the parse tree file."
+        eprint "The specified subprogram takes exactly one argument: \
+                the file name of the parse tree file."
+
+/// Defines a subprogram that prints the given property of the context-free grammar
+/// in file referred to by the single argument.
+let printCFGProperty (show : ContextFreeGrammar<char, char> -> string) (argv : string list) =
+    match argv with
+    | [fileName] ->
+        Result.printWith show (readContextFreeGrammarFile fileName)
+    | _ ->
+        eprint "The specified subprogram takes exactly one argument: \
+                the file name of the context-free grammar file."
 
 /// Defines a subprogram function that reads input from a file, and writes it to another file.
 let performReadWrite (read : string -> Result<'a>)
