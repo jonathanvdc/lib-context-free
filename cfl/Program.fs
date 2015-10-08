@@ -47,10 +47,10 @@ let eprintSubprogramList () : unit =
             let first = sprintf " * %s - " sp.Name
             yield first
             while true do
-                yield String.replicate left.Length " "
+                yield String.replicate first.Length " "
         }
         let rights = IOHelpers.wordWrap 60 sp.Doc
-        for (l, r) in Seq.zip lefts rights do
+        for l, r in Seq.zip lefts rights do
             eprintfn "%s%s" l r
 
 [<EntryPoint>]
