@@ -50,6 +50,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="Result.fs" />
+    <Compile Include="StringHelpers.fs" />
     <Compile Include="ListHelpers.fs" />
     <Compile Include="MapHelpers.fs" />
     <Compile Include="Symbol.fs" />

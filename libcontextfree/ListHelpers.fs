@@ -1,6 +1,6 @@
 ﻿namespace libcontextfree
 
-/// Defines a number of list helpers.
+/// Defines a number of list helper functions.
 module ListHelpers =
     /// A generic function that `splitAtFirst` and `splitAtLast` are both
     /// based on, which allows you to pass any "order" function that specifies

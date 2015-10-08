@@ -113,3 +113,17 @@ module ParseTree =
     let showProductionRules (tree : ParseTree<'nt, 't>) : string =
         productionRules tree |> Seq.mapi (fun index item -> string index + ". " + string item)
                              |> String.concat (System.Environment.NewLine)
+
+    (*
+     *  These functions are for Graphviz output:
+     *)
+
+    /// Return a list of all immediate children of this node.
+    let children : ParseTree<'nt, 't> -> ParseTree<'nt, 't> list =
+        function
+        | TerminalLeaf _ -> []
+        | ProductionNode(_, ps) -> ps
+
+    /// Return a list of all nodes in the tree.
+    let rec allNodes (tree : ParseTree<'nt, 't>) : ParseTree<'nt, 't> list =
+        tree :: List.collect allNodes (children tree)

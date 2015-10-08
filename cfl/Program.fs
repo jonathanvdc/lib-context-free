@@ -35,7 +35,7 @@ let subprograms : Subprogram list =
 
         { Name = "tree-dot";
           Doc = "Read a parse tree and visualize it as a Graphviz .dot file.";
-          Action = performReadWrite readParseTreeFile writeGraphvizFile }
+          Action = performReadWrite readParseTreeFile writeParseTreeGraphvizFile }
 
         { Name = "cfg-nonterminals";
           Doc = "Read a context-free grammar and print its nonterminals.";

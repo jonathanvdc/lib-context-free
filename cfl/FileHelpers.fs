@@ -11,12 +11,12 @@ let print = printfn "%s"
 let eprint = eprintfn "%s"
 
 /// Perform a file read action that fails with a helpful error message.
-let readFile (fileName : string) (action : FileStream -> Result<'a>) : Result<'a> =
+let readFile (path : string) (action : FileStream -> Result<'a>) : Result<'a> =
     try
-        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
+        use fs = new FileStream(path, FileMode.Open, FileAccess.Read)
         action fs
     with
-    | _ -> Error (sprintf "Couldn't open file for reading: '%s'." fileName)
+    | _ -> Error (sprintf "Couldn't open file for reading: '%s'." path)
 
 /// Tries to read a file that contains a parse tree. If something goes wrong,
 /// log an error.
@@ -40,24 +40,24 @@ let readContextFreeGrammarFile (fileName : string) : Result<ContextFreeGrammar<c
         XmlHandler.toCfg (XmlHandler.CFGFile.Load(fs))
 
 /// Perform a file write action that fails with a helpful error message.
-let writeFile (fileName : string) (action : FileStream -> unit) : Result<unit> =
+let writeFile (path : string) (action : FileStream -> unit) : Result<unit> =
     try
-        use fs = new FileStream(fileName, FileMode.Create, FileAccess.Write)
+        use fs = new FileStream(path, FileMode.Create, FileAccess.Write)
         action fs
         Success ()
     with
-    | _ ->  Error (sprintf "Couldn't open file for writing: '%s'." fileName)
+    | _ ->  Error (sprintf "Couldn't open file for writing: '%s'." path)
 
-/// Tries to write the given parse tree to the given output file.
-let writeGraphvizFile (fileName : string) (tree : ParseTree<string, string>) : Result<unit> =
-    writeFile fileName <| fun fs ->
+/// Tries to write the given parse tree to the given output file path.
+let writeParseTreeGraphvizFile (path : string) (tree : ParseTree<string, string>) : Result<unit> =
+    writeFile path <| fun fs ->
         use writer = new StreamWriter(fs)
-        GraphvizHandler.writeGraphviz writer tree
+        GraphvizHandler.writeParseTreeGraph writer tree
 
-/// Tries to write the given character CFG to the given output file.
-let writeCfgXmlFile (fileName : string) (grammar : ContextFreeGrammar<char, char>) : Result<unit> =
+/// Tries to write the given character CFG to the given output file path.
+let writeCfgXmlFile (path : string) (grammar : ContextFreeGrammar<char, char>) : Result<unit> =
     let xmlNode = XmlHandler.ofCfg grammar
-    writeFile fileName xmlNode.XElement.Save
+    writeFile path xmlNode.XElement.Save
 
 /// Defines a subprogram that prints the given property of the parse tree
 /// in file referred to by the single argument.
