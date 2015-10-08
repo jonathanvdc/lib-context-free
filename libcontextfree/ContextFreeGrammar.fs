@@ -106,3 +106,21 @@ module ContextFreeGrammar =
                 // If there is a string with any length other than one,
                 // we can't perform this operation.
                 Error (sprintf "Couldn't convert CFG: it contains invalid terminals %A." invalidTerminals)
+
+    /// Show the nonterminals of a given context-free grammar as a new-line seperated list.
+    let showNonterminals (grammar : ContextFreeGrammar<char, char>) : string =
+        Seq.map string grammar.V |> String.concat "\n"
+
+    /// Show the terminals of a given context-free grammar as a new-line seperated list.
+    let showTerminals (grammar : ContextFreeGrammar<char, char>) : string =
+        Seq.map string grammar.T |> String.concat "\n"
+
+    /// Show the rules of a given context-free grammar as a new-line seperated list.
+    let showRules (grammar : ContextFreeGrammar<char, char>) : string =
+        Seq.map string grammar.P |> String.concat "\n"
+
+    /// Show the start symbol of a given context-free grammar.
+    let showStartSymbol (grammar : ContextFreeGrammar<char, char>) : string =
+        string grammar.S
+    
+    

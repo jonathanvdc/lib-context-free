@@ -14,7 +14,7 @@ let subprograms : Subprogram list =
           Action = printTreeProperty ParseTree.showTreeHead };
 
         { Name = "tree-yield";
-          Doc = "Read a parse tree and print its head.";
+          Doc = "Read a parse tree and print its yield.";
           Action = printTreeProperty ParseTree.showTreeYield };
 
         { Name = "tree-derive-leftmost";
@@ -36,6 +36,22 @@ let subprograms : Subprogram list =
         { Name = "tree-dot";
           Doc = "Read a parse tree and visualize it as a Graphviz .dot file.";
           Action = performReadWrite readParseTreeFile writeGraphvizFile }
+
+        { Name = "cfg-nonterminals";
+          Doc = "Read a context-free grammar and print its nonterminals.";
+          Action = printCFGProperty ContextFreeGrammar.showNonterminals }
+
+        { Name = "cfg-terminals";
+          Doc = "Read a context-free grammar and print its terminals.";
+          Action = printCFGProperty ContextFreeGrammar.showTerminals }
+
+        { Name = "cfg-rules";
+          Doc = "Read a context-free grammar and print its rules.";
+          Action = printCFGProperty ContextFreeGrammar.showRules }
+
+        { Name = "cfg-start-symbol";
+          Doc = "Read a context-free grammar and print its start symbol.";
+          Action = printCFGProperty ContextFreeGrammar.showStartSymbol }
 
         // Insert additional subprograms here.
     ]
