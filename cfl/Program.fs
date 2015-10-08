@@ -2,8 +2,11 @@
 open System
 open System.IO
 
-/// Print a string, followed by a newline.
+/// Print a string, followed by a newline, to stdout.
 let print = printfn "%s"
+
+/// Print a string, followed by a newline, to stderr.
+let eprint = eprintfn "%s"
 
 /// Tries to read a file that contains a parse tree. If something goes wrong,
 /// log an error.
@@ -42,7 +45,7 @@ let printTreeProperty (show : ParseTree<string, string> -> string) (argv : strin
     | [fileName] ->
         Result.printWith show (readParseTreeFile fileName)
     | _ ->
-        print "The specified subprogram takes exactly one argument: the file name of the parse tree file."
+        eprint "The specified subprogram takes exactly one argument: the file name of the parse tree file."
 
 /// Defines a subprogram function that reads input from a file, and writes it to another file.
 let performReadWrite (read : string -> Result<'a>) (write : string -> 'a -> Result<unit>) (argv : string list) =
@@ -50,7 +53,7 @@ let performReadWrite (read : string -> Result<'a>) (write : string -> 'a -> Resu
     | [inputFileName; outputFileName] ->
         Result.eprintf (read inputFileName |> Result.bind (write outputFileName))
     | _ ->
-        print "The specified subprogram takes exactly two arguments: the input and output file names."
+        eprint "The specified subprogram takes exactly two arguments: the input and output file names."
 
 
 let readTreeGrammar (fileName : string) : Result<ContextFreeGrammar<char, char>> =
@@ -73,9 +76,9 @@ let subprograms : Map<string, string list -> unit> =
         // Insert additional subprograms here.
     ]
 
-/// Prints the list of registered subprograms.
-let printSubprogramList () : unit =
-    subprograms |> Seq.iter (fun x -> printfn " * %s" x.Key)
+/// Prints the list of registered subprograms to stderr.
+let eprintSubprogramList () : unit =
+    subprograms |> Seq.iter (fun x -> eprintfn " * %s" x.Key)
 
 [<EntryPoint>]
 let main argv = 
@@ -84,18 +87,18 @@ let main argv =
         // If there is at least one command-line argument,
         // we'll run the subprogram belonging to the
         // first argument.
-        match subprograms.TryFind x with
+        match Map.tryFind x subprograms with
         | Some func -> 
             // We found a known subprogram.
             func xs
         | None ->
             // `x`, whatever it was, was not a known subprogram.
-            printfn "Argument '%s' was not recognized as a known subprogram." x
-            print "List of subprograms:"
-            printSubprogramList ()
+            eprintfn "Argument '%s' was not recognized as a known subprogram." x
+            eprint "List of subprograms:"
+            eprintSubprogramList ()
     | _ ->
         // If no subprogram has been specified, all we can realistically do is
         // rage quit.
-        print "Please specify a subprogram. List of subprograms:"
-        printSubprogramList ()
+        eprint "Please specify a subprogram. List of subprograms:"
+        eprintSubprogramList ()
     0 // return an integer exit code
