@@ -43,15 +43,21 @@ let subprograms : Subprogram list =
 /// Prints the list of registered subprograms to stderr.
 let eprintSubprogramList () : unit =
     for sp in subprograms do
-        eprintfn " * %s - %s" sp.Name sp.Doc
+        let lefts = seq {
+            let first = sprintf " * %s - " sp.Name
+            yield first
+            while true do
+                yield String.replicate left.Length " "
+        }
+        let rights = IOHelpers.wordWrap 60 sp.Doc
+        for (l, r) in Seq.zip lefts rights do
+            eprintfn "%s%s" l r
 
 [<EntryPoint>]
 let main argv = 
     match List.ofArray argv with
     | firstArg :: restArgs ->
-        // If there is at least one command-line argument,
-        // we'll run the subprogram belonging to the
-        // first argument.
+        // Look for a subprogram with the given name.
         match List.tryFind (fun p -> p.Name = firstArg) subprograms with
         | Some subprogram ->
             // We found a known subprogram. Call it with the rest of the arguments.

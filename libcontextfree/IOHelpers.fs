@@ -25,3 +25,19 @@ module IOHelpers =
             readChar reader
         else
             None
+
+    let wordWrap (columns : int) (text : string) : seq<string> =
+        let takeLine (s : string) = s.[0..columns - 1]
+        let rec wrap (s : string) = seq {
+            if s.Length > columns then
+                let i, j =
+                    match (takeLine s).LastIndexOf(' ') with
+                    | -1 -> columns, columns
+                    | x -> x, x + 1
+
+                yield s.[0..i - 1]
+                yield! (wrap s.[j..])
+            else
+                yield s
+        }
+        wrap text
