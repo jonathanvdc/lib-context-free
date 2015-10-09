@@ -121,9 +121,7 @@ module GraphvizHandler =
                     let groups : seq<int * (char option * char * char list) list> =
                         MapHelpers.groupFst arrows |> Map.toSeq
 
-                    // Before creating the list of edges, add this node to the dictionary
-                    // to signify that we're already working on it; otherwise, we will
-                    // run into an infinite loop (makeNode -> makeEdge -> makeNode -> ...)
+                    // Create a new GraphvizNode with one edge for each target.
                     let node =
                         { Label = sprintf "q%d" q;
                           Shape = if Set.contains q F then DoubleCircleShape else CircleShape;
@@ -142,14 +140,11 @@ module GraphvizHandler =
                   Directed = true;
                   Target = makeNode qTarget }
 
-            // Find the node corresponding to q0...
-            let q0node : GraphvizNode = makeNode q0
-
-            // And point a "start" arrow at it.
+            // Point a "start" arrow at the first node.
             let startNode : GraphvizNode =
                 { Label = "start";
                   Shape = NoneShape;
-                  Edges = lazy [{ Label = ""; Directed = true; Target = q0node }] }
+                  Edges = lazy [{ Label = ""; Directed = true; Target = makeNode q0 }] }
 
             // Together, these complete the graph.
             { Name = "PDA"; Nodes = [startNode] }
