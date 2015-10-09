@@ -143,8 +143,7 @@ module GraphvizHandler =
                   Target = makeNode qTarget }
 
             // Find the node corresponding to q0...
-            let q0node : GraphvizNode =
-                snd (nodeMap.TryGetValue q0)
+            let q0node : GraphvizNode = makeNode q0
 
             // And point a "start" arrow at it.
             let startNode : GraphvizNode =
