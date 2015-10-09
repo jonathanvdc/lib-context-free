@@ -53,6 +53,11 @@ let subprograms : Subprogram list =
           Doc = "Read a context-free grammar and print its start symbol.";
           Action = printCFGProperty ContextFreeGrammar.showStartSymbol }
 
+        { Name = "pda-dot";
+          Doc = "Outputs a dot file that represents an if-else push-down automaton.";
+          // TODO: PLEASE, IMPLEMENT ME
+          Action = performReadWrite (fun _ -> Success PushdownAutomaton.ifElseAutomaton) writePdaGraphvizFile }
+
         // Insert additional subprograms here.
     ]
 

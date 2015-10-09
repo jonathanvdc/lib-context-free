@@ -59,6 +59,11 @@ let writeCfgXmlFile (path : string) (grammar : ContextFreeGrammar<char, char>) :
     let xmlNode = XmlHandler.ofCfg grammar
     writeFile path xmlNode.XElement.Save
 
+let writePdaGraphvizFile (path : string) (tree : PushdownAutomaton<'Q, char, char>) : Result<unit> =
+    writeFile path <| fun fs ->
+        use writer = new StreamWriter(fs)
+        GraphvizHandler.writePushdownAutomatonGraph writer tree
+
 /// Defines a subprogram that prints the given property of the parse tree
 /// in file referred to by the single argument.
 let printTreeProperty (show : ParseTree<string, string> -> string) (argv : string list) =
