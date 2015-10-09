@@ -78,9 +78,6 @@ module GraphvizHandler =
         
     /// Creates a graphviz graph from the given parse tree.
     let createParseTreeGraph (tree : ParseTree<string, string>) : GraphvizGraph =
-        // We'll collect the visited nodes in a mutable list.
-        let visitedNodes = new System.Collections.Generic.List<GraphvizNode>()
-        
         // Create an edge, which involves visiting its target node.
         let rec makeEdge (target : ParseTree<string, string>) : GraphvizEdge =
             { Label = "";
@@ -95,12 +92,10 @@ module GraphvizHandler =
                   Shape = NoShape;
                   Edges = List.map makeEdge (ParseTree.children node) }
             
-            visitedNodes.Add result
             result
                 
-        ignore (visit tree)
         { Name = "PTREE"; 
-          Nodes = List.ofSeq visitedNodes }
+          Nodes = [visit tree] }
 
     /// Creates a parse tree graph and writes it to the given writer.
     let writeParseTreeGraph (writer : TextWriter) (tree : ParseTree<string, string>) : unit =
