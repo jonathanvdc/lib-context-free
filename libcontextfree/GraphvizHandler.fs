@@ -22,7 +22,7 @@ module GraphvizHandler =
     [<ReferenceEquality>]
     type GraphvizNode = { Label : string;
                           Shape : GraphvizShape
-                          mutable Edges : GraphvizEdge list; }
+                          Edges : GraphvizEdge list Lazy; }
 
     /// Defines an edge in a graphviz graph.
     /// Every edge has a target, as well
@@ -57,7 +57,7 @@ module GraphvizHandler =
             let label = StringHelpers.htmlEscape node.Label
             writer.WriteLine (sprintf "    node%d [label=\"%s\" shape=%s];"
                                   fromIndex label shape)
-            for edge in node.Edges do
+            for edge in node.Edges.Value do
                 writeEdge fromIndex edge
 
         and writeEdge (fromIndex : int) (edge : GraphvizEdge) =
@@ -89,7 +89,7 @@ module GraphvizHandler =
             let result =
                 { Label = ParseTree.showTreeHead node;
                   Shape = NoneShape;
-                  Edges = List.map makeEdge (ParseTree.children node) }
+                  Edges = lazy List.map makeEdge (ParseTree.children node) }
 
             result
 
@@ -115,16 +115,14 @@ module GraphvizHandler =
                     let node =
                         { Label = sprintf "q%d" q;
                           Shape = if Set.contains q F then DoubleCircleShape else CircleShape;
-                          Edges = [] }
+                          Edges = 
+                          // Find all the arrows pointing from this q.
+                          // (TODO: group edges by common (q, p) as a shorthand.)
+                          lazy [ for (q', a, Y), v in Map.toSeq δ do
+                                     if q = q' then
+                                         for (p, g) in v do
+                                             yield makeEdge (q, a, Y) (p, g) ] }
                     nodeMap.Add(q, node)
-
-                    // Find all the arrows pointing from this q.
-                    // (TODO: group edges by common (q, p) as a shorthand.)
-                    node.Edges <-
-                        [ for (q', a, Y), v in Map.toSeq δ do
-                              if q = q' then
-                                  for (p, g) in v do
-                                      yield makeEdge (q, a, Y) (p, g) ]
                     node
 
             and makeEdge (q, a, Y) (p, g : char list) =
@@ -147,7 +145,7 @@ module GraphvizHandler =
             let startNode : GraphvizNode =
                 { Label = "start";
                   Shape = NoneShape;
-                  Edges = [{ Label = ""; Directed = true; Target = q0node }] }
+                  Edges = lazy [{ Label = ""; Directed = true; Target = q0node }] }
 
             // Together, these complete the graph.
             { Name = "PDA";
