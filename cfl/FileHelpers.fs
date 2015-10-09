@@ -16,7 +16,8 @@ let readFile (path : string) (action : FileStream -> Result<'a>) : Result<'a> =
         use fs = new FileStream(path, FileMode.Open, FileAccess.Read)
         action fs
     with
-    | _ -> Error (sprintf "Couldn't open file for reading: '%s'." path)
+    | :? System.IO.IOException ->
+        Error (sprintf "Couldn't open file for reading: '%s'." path)
 
 /// Tries to read a file that contains a parse tree. If something goes wrong,
 /// log an error.
@@ -46,7 +47,8 @@ let writeFile (path : string) (action : FileStream -> unit) : Result<unit> =
         action fs
         Success ()
     with
-    | _ ->  Error (sprintf "Couldn't open file for writing: '%s'." path)
+    | :? System.IO.IOException ->
+        Error (sprintf "Couldn't open file for writing: '%s'." path)
 
 /// Tries to write the given parse tree to the given output file path.
 let writeParseTreeGraphvizFile (path : string) (tree : ParseTree<string, string>) : Result<unit> =

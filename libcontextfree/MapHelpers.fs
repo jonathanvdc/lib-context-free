@@ -10,3 +10,10 @@ module MapHelpers =
                     | None -> v
             Map.add k w acc
         Map.fold g a b
+
+    /// Group a sequence of (K, V) tuples into lists of V using the K values as keys.
+    let groupFst (kvs : seq<'K * 'V>) : Map<'K, 'V list> =
+        let g m (k, v) =
+            let vs = defaultArg (Map.tryFind k m) []
+            Map.add k (v :: vs) m
+        Seq.fold g Map.empty kvs

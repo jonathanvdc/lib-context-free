@@ -75,7 +75,8 @@ let eprintSubprogramList () : unit =
             eprintfn "%s%s" l r
 
 [<EntryPoint>]
-let main argv = 
+let main argv' =
+    let argv = [|"pda-dot"; "a"; "out"|]
     match List.ofArray argv with
     | firstArg :: restArgs ->
         // Look for a subprogram with the given name.

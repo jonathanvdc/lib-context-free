@@ -54,19 +54,20 @@ module GraphvizHandler =
                 | CircleShape -> "circle"
                 | DoubleCircleShape -> "doublecircle"
 
-            let label = StringHelpers.htmlEscape node.Label
+            let label = StringHelpers.dotEscape node.Label
             writer.WriteLine (sprintf "    node%d [label=\"%s\" shape=%s];"
                                   fromIndex label shape)
             for edge in node.Edges.Value do
                 writeEdge fromIndex edge
 
         and writeEdge (fromIndex : int) (edge : GraphvizEdge) =
+            // XXX: Why is edge.Target ever null here???
             if not(namedict.ContainsKey edge.Target) then
                 writeNode edge.Target
 
             let toIndex = indexNode edge.Target
             let arrow = if edge.Directed then "->" else "--"
-            let label = StringHelpers.htmlEscape edge.Label
+            let label = StringHelpers.dotEscape edge.Label
             let line = sprintf "    node%d %s node%d [label=\"%s\"];"
                             fromIndex arrow toIndex label
 
@@ -109,33 +110,37 @@ module GraphvizHandler =
                 match nodeMap.TryGetValue(q) with
                 | true, node -> node
                 | false, _ ->
+                    // Find all arrows pointing from this q.
+                    let arrows =
+                        [ for (qSource, a, Y), v in Map.toSeq δ do
+                            if q = qSource then
+                                for (qTarget, g) in v do
+                                    yield (qTarget, (a, Y, g)) ]
+                    
+                    // Group them by target.
+                    let groups : seq<int * (char option * char * char list) list> =
+                        MapHelpers.groupFst arrows |> Map.toSeq
+
                     // Before creating the list of edges, add this node to the dictionary
                     // to signify that we're already working on it; otherwise, we will
                     // run into an infinite loop (makeNode -> makeEdge -> makeNode -> ...)
                     let node =
                         { Label = sprintf "q%d" q;
                           Shape = if Set.contains q F then DoubleCircleShape else CircleShape;
-                          Edges = 
-                          // Find all the arrows pointing from this q.
-                          // (TODO: group edges by common (q, p) as a shorthand.)
-                          lazy [ for (q', a, Y), v in Map.toSeq δ do
-                                     if q = q' then
-                                         for (p, g) in v do
-                                             yield makeEdge (q, a, Y) (p, g) ] }
+                          Edges = lazy [ for qTarget, g in groups -> makeEdge qTarget g ] }
                     nodeMap.Add(q, node)
                     node
 
-            and makeEdge (q, a, Y) (p, g : char list) =
+            and makeEdge qTarget (paths : seq<char option * char * char list>) =
                 // We want to display epsilon symbols and empty strings as ε.
-                let a' = defaultArg a 'ε'
-                let g' = if List.isEmpty g then "ε" else new string (List.toArray g)
-                { Label = sprintf "%c, %c / %s" a' Y g';
-                  Directed = true;
-                  Target = makeNode p }
+                let labelLine (a, Y, g) =
+                    let a' = defaultArg a 'ε'
+                    let g' = if List.isEmpty g then "ε" else new string (List.toArray g)
+                    sprintf "%c, %c / %s" a' Y g'
 
-            // All of the nodes representing states in the PDA.
-            let qNodes : GraphvizNode list =
-                List.map makeNode (Set.toList Q)
+                { Label = String.concat "\n" (Seq.map labelLine paths);
+                  Directed = true;
+                  Target = makeNode qTarget }
 
             // Find the node corresponding to q0...
             let q0node : GraphvizNode =
@@ -148,8 +153,7 @@ module GraphvizHandler =
                   Edges = lazy [{ Label = ""; Directed = true; Target = q0node }] }
 
             // Together, these complete the graph.
-            { Name = "PDA";
-              Nodes = startNode :: qNodes }
+            { Name = "PDA"; Nodes = [startNode] }
 
     /// Write the parse tree to the given TextWriter in Graphviz format.
     let writeParseTreeGraph (writer : TextWriter) (tree : ParseTree<string, string>) : unit =
