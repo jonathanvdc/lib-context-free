@@ -178,3 +178,41 @@ module PushdownAutomaton =
         let δ = Map.ofList [("q", Some 'i', 'Z'), Set.singleton ("q", ['Z'; 'Z']);
                             ("q", Some 'e', 'Z'), Set.singleton ("q", [])]
         PushdownAutomaton (δ, "q", 'Z', Set.empty)
+
+    /// Convert a context-free grammar to a pushdown automaton. (Slide 82)
+    /// The nonterminals correspond to the notation in the slide as follows:
+    ///
+    ///     S        <=> None
+    ///     [pXq]    <=> Some (p, X, q)
+    ///
+    /// TODO: tests!
+    let toCFG : PushdownAutomaton<'Q, 'Σ, 'Γ> -> ContextFreeGrammar<('Q * 'Γ * 'Q) option, 'Σ> =
+        function
+        | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
+            let Q' = Set.toList Q
+            let R1 = seq {
+                for p in Q do
+                    let nt = Some (q0, Z0, p)
+                    yield ProductionRule(None, [Nonterminal nt])
+            }
+            let R2 = seq {
+                for KeyValue((q, a, X), v) in δ do
+                    for (r, Ys) in v do
+                        let k = List.length Ys
+                        for rs in ListHelpers.cartesianPower k Q' do
+                            let a' = match a with
+                                     | Some s -> [Terminal s]
+                                     | None -> []
+                            let rs' = List.toArray rs
+                            if k > 0 then
+                                let head = Some (q, X, rs'.[k - 1])
+                                let chain = List.zip3 (r :: rs) Ys rs
+                                let body = List.append a' (List.map (Nonterminal << Some) chain)
+                                yield ProductionRule(head, body)
+                            else
+                                let head = Some (q, X, r)
+                                yield ProductionRule(head, a')
+            }
+            let R = Set.union (Set.ofSeq R1) (Set.ofSeq R2)
+            ContextFreeGrammar (R, None)
+    

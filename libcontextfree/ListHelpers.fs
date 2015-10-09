@@ -67,3 +67,12 @@ module ListHelpers =
                     (items : 'a list)
                     : ('a list * 'b * 'a list) option =
         splitAtFirstOrder List.rev pred items
+
+    /// The Cartesian nth power of a list, i.e. l × l × ... × l. (Be careful:
+    /// this computes a list containing |l|^n elements, which can be large.)
+    let rec cartesianPower (n : int) (l : 'a list) =
+        match n with
+        | 0 -> [[]]
+        | n -> [ for x in l do
+                     for xs in cartesianPower (n - 1) l do
+                         yield x :: xs ]
