@@ -40,11 +40,14 @@ module GraphvizHandler =
     /// Writes the given graph to the given text writer.
     let writeGraph (writer : TextWriter) (graph : GraphvizGraph) : unit =
         writer.WriteLine (sprintf "digraph %s {" graph.Name)
-        
-        let nodeNames : (int * GraphvizNode) list =
-            List.mapi (fun i n -> (i, n)) graph.Nodes
-        
-        for fromIndex, node in nodeNames do
+
+        let namedict = System.Collections.Concurrent.ConcurrentDictionary<GraphvizNode, int>()
+
+        let indexNode node = 
+            namedict.GetOrAdd(node, fun _ -> namedict.Count)
+
+        let rec writeNode node =
+            let fromIndex = indexNode node
             let shape =
                 match node.Shape with
                 | NoShape -> "none"
@@ -54,17 +57,22 @@ module GraphvizHandler =
             let label = StringHelpers.htmlEscape node.Label
             writer.WriteLine (sprintf "    node%d [label=\"%s\" shape=%s];"
                                   fromIndex label shape)
-
             for edge in node.Edges do
-                let toIndex =
-                    List.find (fun (_, n) -> edge.Target = n) nodeNames |> fst
-                
-                let arrow = if edge.Directed then "->" else "--"
-                let label = StringHelpers.htmlEscape edge.Label
-                let line = sprintf "    node%d %s node%d [label=\"%s\"];"
-                               fromIndex arrow toIndex label
+                writeEdge fromIndex edge
 
-                writer.WriteLine line
+        and writeEdge (fromIndex : int) (edge : GraphvizEdge) =
+            if not(namedict.ContainsKey edge.Target) then
+                writeNode edge.Target
+
+            let toIndex = indexNode edge.Target
+            let arrow = if edge.Directed then "->" else "--"
+            let label = StringHelpers.htmlEscape edge.Label
+            let line = sprintf "    node%d %s node%d [label=\"%s\"];"
+                            fromIndex arrow toIndex label
+
+            writer.WriteLine line
+
+        graph.Nodes |> List.iter writeNode
 
         writer.WriteLine("}")
         
