@@ -5,32 +5,49 @@ open System.IO
 open IOHelpers
 
 module GraphvizHandler =
+    /// Defines a graphviz node's shape.
     type GraphvizShape =
-        | None
+        /// The "none" shape. This is named `NoShape`
+        /// to avoid conflicts and confusion with
+        /// `Option.None`.
+        | NoShape
+        /// A circular shape.
         | Circle
+        /// A shape that consists of two circles.
         | DoubleCircle
 
+    /// Defines a single node in a graphviz graph.
+    /// A node consists of a label, a shape and
+    /// a set of edges.
     [<ReferenceEquality>]
     type GraphvizNode = { Label : string;
                           Shape : GraphvizShape 
                           Edges : GraphvizEdge list; }
 
+    /// Defines an edge in a graphviz graph.
+    /// Every edge has a target, as well
+    /// as a label, which may be empty.
+    /// Edges can optionally be directed.
     and GraphvizEdge = { Label : string;
                          Directed : bool;
                          Target : GraphvizNode; }
     
-    type GraphvizGraph = GraphvizNode list
+    /// Defines a graphviz graph as a graph name and a 
+    /// list of nodes.
+    type GraphvizGraph = { Name : string; 
+                           Nodes : GraphvizNode list }
 
+    /// Writes the given graph to the given text writer.
     let writeGraph (writer : TextWriter) (graph : GraphvizGraph) : unit =
-        writer.WriteLine "digraph G {"
+        writer.WriteLine (sprintf "digraph %s {" graph.Name)
         
         let nodeNames : (int * GraphvizNode) list =
-            List.mapi (fun i n -> (i, n)) graph
+            List.mapi (fun i n -> (i, n)) graph.Nodes
         
         for fromIndex, node in nodeNames do
             let shape =
                 match node.Shape with
-                | None -> "none"
+                | NoShape -> "none"
                 | Circle -> "circle"
                 | DoubleCircle -> "doublecircle"
 
@@ -51,7 +68,8 @@ module GraphvizHandler =
 
         writer.WriteLine("}")
         
-    let parseTreeGraph (tree : ParseTree<string, string>) : GraphvizGraph =
+    /// Creates a graphviz graph from the given parse tree.
+    let createParseTreeGraph (tree : ParseTree<string, string>) : GraphvizGraph =
         // We'll collect the visited nodes in a mutable list.
         let visitedNodes = new System.Collections.Generic.List<GraphvizNode>()
         
@@ -66,14 +84,16 @@ module GraphvizHandler =
         and visit (node : ParseTree<string, string>) : GraphvizNode =
             let result =
                 { Label = ParseTree.showTreeHead node;
-                  Shape = None;
+                  Shape = NoShape;
                   Edges = List.map makeEdge (ParseTree.children node) }
             
             visitedNodes.Add result
             result
                 
         ignore (visit tree)
-        List.ofSeq visitedNodes
+        { Name = "PTREE"; 
+          Nodes = List.ofSeq visitedNodes }
 
+    /// Creates a parse tree graph and writes it to the given writer.
     let writeParseTreeGraph (writer : TextWriter) (tree : ParseTree<string, string>) : unit =
-        writeGraph writer (parseTreeGraph tree)
+        createParseTreeGraph tree |> writeGraph writer
