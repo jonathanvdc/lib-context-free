@@ -174,11 +174,6 @@ module PushdownAutomaton =
 
             PushdownAutomaton (δF, p0, X0, Set.empty)
 
-    let ifElseAutomaton : PushdownAutomaton<string, char, char> =
-        let δ = Map.ofList [("q", Some 'i', 'Z'), Set.singleton ("q", ['Z'; 'Z']);
-                            ("q", Some 'e', 'Z'), Set.singleton ("q", [])]
-        PushdownAutomaton (δ, "q", 'Z', Set.empty)
-
     /// Convert a context-free grammar to a pushdown automaton. (Slide 82)
     /// The nonterminals correspond to the notation in the slide as follows:
     ///
@@ -190,12 +185,11 @@ module PushdownAutomaton =
         function
         | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
             let Q' = Set.toList Q
-            let R1 = seq {
+            let R = Set.ofSeq <| seq {
                 for p in Q do
                     let nt = Some (q0, Z0, p)
                     yield ProductionRule(None, [Nonterminal nt])
-            }
-            let R2 = seq {
+            
                 for KeyValue((q, a, X), v) in δ do
                     for (r, Ys) in v do
                         let k = List.length Ys
@@ -213,6 +207,10 @@ module PushdownAutomaton =
                                 let head = Some (q, X, r)
                                 yield ProductionRule(head, a')
             }
-            let R = Set.union (Set.ofSeq R1) (Set.ofSeq R2)
             ContextFreeGrammar (R, None)
     
+    /// A hard-coded if-else grammar automaton, stolen from Slide 69, for testing purposes.
+    let ifElseAutomaton : PushdownAutomaton<string, char, char> =
+        let δ = Map.ofList [("q", Some 'i', 'Z'), Set.singleton ("q", ['Z'; 'Z']);
+                            ("q", Some 'e', 'Z'), Set.singleton ("q", [])]
+        PushdownAutomaton (δ, "q", 'Z', Set.empty)
