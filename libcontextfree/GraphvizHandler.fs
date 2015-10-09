@@ -10,19 +10,19 @@ module GraphvizHandler =
         /// The "none" shape. This is named `NoShape`
         /// to avoid conflicts and confusion with
         /// `Option.None`.
-        | NoShape
+        | NoneShape
         /// A circular shape.
-        | Circle
+        | CircleShape
         /// A shape that consists of two circles.
-        | DoubleCircle
+        | DoubleCircleShape
 
     /// Defines a single node in a graphviz graph.
     /// A node consists of a label, a shape and
     /// a set of edges.
     [<ReferenceEquality>]
     type GraphvizNode = { Label : string;
-                          Shape : GraphvizShape 
-                          Edges : GraphvizEdge list; }
+                          Shape : GraphvizShape
+                          mutable Edges : GraphvizEdge list; }
 
     /// Defines an edge in a graphviz graph.
     /// Every edge has a target, as well
@@ -31,10 +31,10 @@ module GraphvizHandler =
     and GraphvizEdge = { Label : string;
                          Directed : bool;
                          Target : GraphvizNode; }
-    
-    /// Defines a graphviz graph as a graph name and a 
+
+    /// Defines a graphviz graph as a graph name and a
     /// list of nodes.
-    type GraphvizGraph = { Name : string; 
+    type GraphvizGraph = { Name : string;
                            Nodes : GraphvizNode list }
 
     /// Writes the given graph to the given text writer.
@@ -43,16 +43,16 @@ module GraphvizHandler =
 
         let namedict = System.Collections.Concurrent.ConcurrentDictionary<GraphvizNode, int>()
 
-        let indexNode node = 
+        let indexNode node =
             namedict.GetOrAdd(node, fun _ -> namedict.Count)
 
         let rec writeNode node =
             let fromIndex = indexNode node
             let shape =
                 match node.Shape with
-                | NoShape -> "none"
-                | Circle -> "circle"
-                | DoubleCircle -> "doublecircle"
+                | NoneShape -> "none"
+                | CircleShape -> "circle"
+                | DoubleCircleShape -> "doublecircle"
 
             let label = StringHelpers.htmlEscape node.Label
             writer.WriteLine (sprintf "    node%d [label=\"%s\" shape=%s];"
@@ -74,29 +74,89 @@ module GraphvizHandler =
 
         graph.Nodes |> List.iter writeNode
 
-        writer.WriteLine("}")
-        
+        writer.WriteLine "}"
+
     /// Creates a graphviz graph from the given parse tree.
     let createParseTreeGraph (tree : ParseTree<string, string>) : GraphvizGraph =
-        // Create an edge, which involves visiting its target node.
         let rec makeEdge (target : ParseTree<string, string>) : GraphvizEdge =
             { Label = "";
               Directed = true;
               Target = visit target }
 
-        // Visit a node, which involves creating edges for its children.
+        // Visits a node, which involves creating edges for its children.
         // Resturn the constructed GraphvizNode after adding it to a list.
         and visit (node : ParseTree<string, string>) : GraphvizNode =
             let result =
                 { Label = ParseTree.showTreeHead node;
-                  Shape = NoShape;
+                  Shape = NoneShape;
                   Edges = List.map makeEdge (ParseTree.children node) }
-            
+
             result
-                
-        { Name = "PTREE"; 
+
+        { Name = "PTREE";
           Nodes = [visit tree] }
 
-    /// Creates a parse tree graph and writes it to the given writer.
+    /// Construct a Graphviz graph from a pushdown automaton over characters.
+    let createPushdownAutomatonGraph (pda : PushdownAutomaton<'Q, char, char>) : GraphvizGraph =
+        match PushdownAutomaton.enumerate pda with
+        | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
+            // We will memoize nodes to this mutable dictionary.
+            let nodeMap = new System.Collections.Generic.Dictionary<int, GraphvizNode>()
+
+            // makeNode and makeEdge corecursively search the PDA depth-first, building
+            // parts of a GraphvizGraph as they go along.
+            let rec makeNode (q : int) : GraphvizNode =
+                match nodeMap.TryGetValue(q) with
+                | true, node -> node
+                | false, _ ->
+                    // Before creating the list of edges, add this node to the dictionary
+                    // to signify that we're already working on it; otherwise, we will
+                    // run into an infinite loop (makeNode -> makeEdge -> makeNode -> ...)
+                    let node =
+                        { Label = sprintf "q%d" q;
+                          Shape = if Set.contains q F then DoubleCircleShape else CircleShape;
+                          Edges = [] }
+                    nodeMap.Add(q, node)
+
+                    // Find all the arrows pointing from this q.
+                    // (TODO: group edges by common (q, p) as a shorthand.)
+                    node.Edges <-
+                        [ for (q', a, Y), v in Map.toSeq δ do
+                              if q = q' then
+                                  for (p, g) in v do
+                                      yield makeEdge (q, a, Y) (p, g) ]
+                    node
+
+            and makeEdge (q, a, Y) (p, g : char list) =
+                // We want to display epsilon symbols and empty strings as ε.
+                let a' = defaultArg a 'ε'
+                let g' = if List.isEmpty g then "ε" else new string (List.toArray g)
+                { Label = sprintf "%c, %c / %s" a' Y g';
+                  Directed = true;
+                  Target = makeNode p }
+
+            // All of the nodes representing states in the PDA.
+            let qNodes : GraphvizNode list =
+                List.map makeNode (Set.toList Q)
+
+            // Find the node corresponding to q0...
+            let q0node : GraphvizNode =
+                snd (nodeMap.TryGetValue q0)
+
+            // And point a "start" arrow at it.
+            let startNode : GraphvizNode =
+                { Label = "start";
+                  Shape = NoneShape;
+                  Edges = [{ Label = ""; Directed = true; Target = q0node }] }
+
+            // Together, these complete the graph.
+            { Name = "PDA";
+              Nodes = startNode :: qNodes }
+
+    /// Write the parse tree to the given TextWriter in Graphviz format.
     let writeParseTreeGraph (writer : TextWriter) (tree : ParseTree<string, string>) : unit =
         createParseTreeGraph tree |> writeGraph writer
+
+    /// Write the pushdown automaton to the given TextWriter in Graphviz format.
+    let writePushdownAutomatonGraph (writer : TextWriter) (pda : PushdownAutomaton<'Q, char, char>) : unit =
+        writeGraph writer (createPushdownAutomatonGraph pda)
