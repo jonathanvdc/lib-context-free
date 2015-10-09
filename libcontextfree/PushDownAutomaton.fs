@@ -71,6 +71,25 @@ module PushdownAutomatonOps =
         | PushdownAutomaton (δ, q0, Z0, F) -> (pda.Q, pda.Σ, pda.Γ, δ, q0, Z0, F)
 
 module PushdownAutomaton =
+    /// Map a function φ over the states of a PDA. φ should be injective.
+    let mapStates (φ : 'Q -> 'R) : PushdownAutomaton<'Q, 'Σ, 'Γ> -> PushdownAutomaton<'R, 'Σ, 'Γ> =
+        function
+        | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
+            let r0 = φ q0
+            let F' = Set.map φ F
+            let δ' =
+                Map.toList δ
+                |> List.map (fun ((q, a, X), ps) ->
+                    ((φ q, a, X), Set.map (fun (q', Y) ->
+                                        (φ q', Y)) ps))
+                |> Map.ofList
+            PushdownAutomaton(δ', r0, Z0, F')
+    
+    /// Rename the states in a PDA to 0, 1, 2...
+    let enumerate (pda : PushdownAutomaton<'Q, 'Σ, 'Γ>) : PushdownAutomaton<int, 'Σ, 'Γ> =
+        let qmap = Map.ofSeq (Seq.mapi (fun i q -> q, i) pda.Q)
+        mapStates (fun q -> Map.find q qmap) pda
+
     /// Convert a context-free grammar to a pushdown automaton as per slide 75.
     /// TODO: tests!
     let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
@@ -115,8 +134,8 @@ module PushdownAutomaton =
             let δ2 = seq {
                 for KeyValue((q, a, Y), v) in δN do
                     // Wrap the old state/symbol types.
-                    let v' = v |> Set.map (fun (p, γ) ->
-                                 (Some (Some p), List.map Some γ))
+                    let v' = v |> Set.map (fun (p, g) ->
+                                 (Some (Some p), List.map Some g))
                     yield ((Some (Some q), a, Some Y), v')
             }
 
@@ -178,3 +197,8 @@ module PushdownAutomaton =
                      |> MapHelpers.mergeWith Set.union additional
 
             PushdownAutomaton (δF, p0, X0, Set.empty)
+
+    let ifElseAutomaton : PushdownAutomaton<string, char, char> =
+        let δ = Map.ofList [("q", Some 'i', 'Z'), Set.singleton ("q", ['Z'; 'Z']);
+                            ("q", Some 'e', 'Z'), Set.singleton ("q", [])]
+        PushdownAutomaton (δ, "q", 'Z', Set.empty)
