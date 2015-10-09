@@ -90,36 +90,12 @@ module PushdownAutomaton =
         let qmap = Map.ofSeq (Seq.mapi (fun i q -> q, i) pda.Q)
         mapStates (fun q -> Map.find q qmap) pda
 
-    /// Convert a context-free grammar to a pushdown automaton as per slide 75.
-    /// TODO: tests!
-    let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
-        function
-        | CFG (V, T, P, S) ->
-            // Our only state.
-            let q : unit = ()
-
-            let δ : Transition<unit, 't, Symbol<'nt, 't>> =
-                // The definition of δ for nonterminals:
-                let δ1 = seq {
-                    for ProductionRule(A, β) in P do
-                        yield ((q, None, Nonterminal A), Set.singleton (q, β))
-                }
-                // The definition of δ for terminals:
-                let δ2 = seq {
-                    for t in T do
-                        yield ((q, Some t, Terminal t), Set.singleton (q, []))
-                }
-                // δ is their union.
-                Map.ofSeq (Seq.append δ1 δ2)
-
-            PushdownAutomaton (δ, q, Nonterminal S, Set.empty)
-
     /// Convert a pushdown automaton that accepts L on an empty stack
     /// to one that accepts L in its final states. (Slide 67)
     /// TODO: tests!
-    let emptyStackToFinalState (pda : PushdownAutomaton<'Q, 'Σ, 'Γ>) : PushdownAutomaton<'Q option option, 'Σ, 'Γ option> =
-        match pda with
-        | PushdownAutomaton (δN, q0, Z0, F) ->
+    let emptyStackToFinalState : PushdownAutomaton<'Q, 'Σ, 'Γ> -> PushdownAutomaton<'Q option option, 'Σ, 'Γ option> =
+        function
+        | PDA(Q, Σ, Γ, δN, q0, Z0, F) ->
             // New states and stack symbols.
             let p0  : 'Q option option = None
             let pf  : 'Q option option = Some None
@@ -141,7 +117,7 @@ module PushdownAutomaton =
 
             // Additional arrows from (q, ε, X0) to pf.
             let additional = Map.ofSeq (seq {
-                for q in pda.Q ->
+                for q in Q ->
                     ((Some (Some q), None, X0), Set.singleton (pf, []))
             })
 
@@ -154,9 +130,9 @@ module PushdownAutomaton =
     /// Convert a pushdown automaton that accepts L in its final states
     /// to one that accepts L on an empty stack. (Slide 71)
     /// TODO: tests!
-    let finalStateToEmptyStack (pda : PushdownAutomaton<'Q, 'Σ, 'Γ>) : PushdownAutomaton<'Q option option, 'Σ, 'Γ option> =
-        match pda with
-        | PushdownAutomaton (δF, q0, Z0, F) ->
+    let finalStateToEmptyStack : PushdownAutomaton<'Q, 'Σ, 'Γ> -> PushdownAutomaton<'Q option option, 'Σ, 'Γ option> =
+        function
+        | PDA(Q, Σ, Γ, δF, q0, Z0, F) ->
             // New states and stack symbols.
             let p0  : 'Q option option = None
             let p   : 'Q option option = Some None
@@ -165,7 +141,7 @@ module PushdownAutomaton =
             let Z0' : 'Γ option = Some Z0
         
             // The augmented set of stackSymbols: Γ ∪ {X0}.
-            let stackSymbols = Set.map Some pda.Γ |> Set.add X0
+            let stackSymbols = Set.map Some Γ |> Set.add X0
 
             // The first transition.
             let δ1 = Seq.singleton ((p0, None, X0), Set.singleton (q0', [Z0'; X0]))
