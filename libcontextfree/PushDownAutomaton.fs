@@ -174,6 +174,30 @@ module PushdownAutomaton =
 
             PushdownAutomaton (δF, p0, X0, Set.empty)
 
+    /// Convert a context-free grammar to a pushdown automaton as per slide 75.
+    /// TODO: tests!
+    let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
+        function
+        | CFG (V, T, P, S) ->
+            // Our only state.
+            let q : unit = ()
+
+            let δ : Transition<unit, 't, Symbol<'nt, 't>> =
+                // The definition of δ for nonterminals:
+                let δ1 = seq {
+                    for ProductionRule(A, β) in P do
+                        yield ((q, None, Nonterminal A), Set.singleton (q, β))
+                }
+                // The definition of δ for terminals:
+                let δ2 = seq {
+                    for t in T do
+                        yield ((q, Some t, Terminal t), Set.singleton (q, []))
+                }
+                // δ is their union.
+                Map.ofSeq (Seq.append δ1 δ2)
+
+            PushdownAutomaton (δ, q, Nonterminal S, Set.empty)
+    
     /// Convert a context-free grammar to a pushdown automaton. (Slide 82)
     /// The nonterminals correspond to the notation in the slide as follows:
     ///
