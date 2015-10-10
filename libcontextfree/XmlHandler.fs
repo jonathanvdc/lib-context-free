@@ -185,8 +185,7 @@ module XmlHandler =
                 )
             )
 
-            Result.sequence (Seq.toList transitions)
-            |> Result.map (fun ts ->
+            Result.sequence transitions |> Result.map (fun ts ->
                 let δ = MapHelpers.groupFstSet ts
                 PushdownAutomaton (δ, q0, "Z0", Set.ofSeq F))
         | [] ->
