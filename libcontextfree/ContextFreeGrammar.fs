@@ -109,15 +109,15 @@ module ContextFreeGrammar =
 
     /// Show the nonterminals of a given context-free grammar as a new-line seperated list.
     let showNonterminals (grammar : ContextFreeGrammar<char, char>) : string =
-        Seq.map string grammar.V |> String.concat "\n"
+        Seq.map string grammar.V |> String.concat (System.Environment.NewLine)
 
     /// Show the terminals of a given context-free grammar as a new-line seperated list.
     let showTerminals (grammar : ContextFreeGrammar<char, char>) : string =
-        Seq.map string grammar.T |> String.concat "\n"
+        Seq.map string grammar.T |> String.concat (System.Environment.NewLine)
 
     /// Show the rules of a given context-free grammar as a new-line seperated list.
     let showRules (grammar : ContextFreeGrammar<char, char>) : string =
-        Seq.map string grammar.P |> String.concat "\n"
+        grammar.P |> ProductionRules.show
 
     /// Show the start symbol of a given context-free grammar.
     let showStartSymbol (grammar : ContextFreeGrammar<char, char>) : string =

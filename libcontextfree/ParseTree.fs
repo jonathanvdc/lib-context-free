@@ -111,8 +111,7 @@ module ParseTree =
 
     /// Gets a string representation of the set of production rules that are used in this parse tree.
     let showProductionRules (tree : ParseTree<'nt, 't>) : string =
-        productionRules tree |> Seq.mapi (fun index item -> string index + ". " + string item)
-                             |> String.concat (System.Environment.NewLine)
+        productionRules tree |> ProductionRules.show
 
     (*
      *  These functions are for Graphviz output:
