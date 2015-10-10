@@ -70,8 +70,7 @@ module XmlHandler =
                                     contains more than one head symbol." inputRule.Lhs inputRule.Rhs)
 
             input.Productions.Rules
-            |> Array.toList
-            |> List.map toRule
+            |> Seq.map toRule
             |> Result.sequence
             |> Result.map (fun rs -> ContextFreeGrammar(Set.unionMany rs, startSymbol))
 
