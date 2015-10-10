@@ -174,7 +174,7 @@ module PushdownAutomaton =
 
             PushdownAutomaton (δF, p0, X0, Set.empty)
 
-    /// Convert a context-free grammar to a pushdown automaton as per slide 75.
+    /// Convert a context-free grammar to a pushdown automaton. (Slide 75)
     /// TODO: tests!
     let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
         function
