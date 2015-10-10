@@ -38,7 +38,7 @@ let readTreeGrammar (fileName : string) : Result<ContextFreeGrammar<char, char>>
 /// If something goes wrong, log an error.
 let readContextFreeGrammarFile (fileName : string) : Result<ContextFreeGrammar<char, char>> =
     readFile fileName <| fun fs ->
-        XmlHandler.toCfg (XmlHandler.CFGFile.Load(fs))
+        XmlHandler.toCfg (XmlHandler.CfgFile.Load(fs))
 
 /// Perform a file write action that fails with a helpful error message.
 let writeFile (path : string) (action : FileStream -> unit) : Result<unit> =

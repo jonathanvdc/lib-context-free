@@ -17,3 +17,11 @@ module MapHelpers =
             let vs = defaultArg (Map.tryFind k m) []
             Map.add k (v :: vs) m
         Seq.fold g Map.empty kvs
+
+    /// Group a sequence of (K, V) tuples into sets of V using the K values as keys.
+    let groupFstSet (kvs : seq<'K * 'V>) : Map<'K, Set<'V>> =
+        let g m (k, v) =
+            let vs = defaultArg (Map.tryFind k m) Set.empty
+            Map.add k (Set.add v vs) m
+        Seq.fold g Map.empty kvs
+
