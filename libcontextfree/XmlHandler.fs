@@ -163,25 +163,22 @@ module XmlHandler =
     /// Tries to convert the given PDA XML node to a pushdown automaton.
     /// If this cannot be done, an Error value is returned.
     let toPda (input : PdaFile.Pda) : Result<PushdownAutomaton<string, string, string>> =
-        let statesWhere (p : PdaFile.State -> bool) : Set<string> =
-            input.States.States
-            |> Array.filter p
-            |> Array.map (fun s -> s.Name)
-            |> Set.ofArray
+        let statesWhere (p : PdaFile.State -> bool) : seq<string> =
+            input.States.States |> Seq.filter p
+                                |> Seq.map (fun s -> s.Name)
 
         let F = statesWhere (fun x -> defaultArg x.Accepting false)
         let q0s = statesWhere (fun x -> defaultArg x.Starting false)
 
-        match Set.toList q0s with
+        match List.ofSeq q0s with
         | [q0] ->
-            let transitions = seq {
-                for t in input.Transitions.Transitions do
-                    let a = if t.Input = "empty" then None else Some t.Input
-                    yield ((t.From, a, t.Stacktop), (t.To, Array.toList t.Pushes))
-            }
+            let transitions = input.Transitions.Transitions |> Array.map (fun t ->
+                let a = if t.Input = "empty" then None else Some t.Input
+                ((t.From, a, t.Stacktop), (t.To, Array.toList t.Pushes))
+            )
             let δ : Transition<string, string, string> =
                 MapHelpers.groupFstSet transitions
-            Success (PushdownAutomaton (δ, q0, "Z0", F))
+            Success (PushdownAutomaton (δ, q0, "Z0", Set.ofSeq F))
         | [] ->
             Error "The given PDA has no starting state."
         | q0s ->
