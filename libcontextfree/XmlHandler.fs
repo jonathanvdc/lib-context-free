@@ -172,13 +172,24 @@ module XmlHandler =
 
         match List.ofSeq q0s with
         | [q0] ->
-            let transitions = input.Transitions.Transitions |> Array.map (fun t ->
-                let a = if t.Input = "empty" then None else Some t.Input
-                ((t.From, a, t.Stacktop), (t.To, Array.toList t.Pushes))
+            let transitions = input.Transitions.Transitions |> Seq.map (fun t ->
+                let a : string option =
+                    if t.Input = "empty" then None else Some t.Input
+                let pushes : Result<string list> =
+                    match t.Operation.ToLowerInvariant() with
+                    | "push" -> Success (Array.toList t.Pushes)
+                    | "pop"  -> Success []
+                    | "stay" -> Success [t.Stacktop]
+                    | op     -> Error (sprintf "Unknown transition operation: '%s'." op)
+                pushes |> Result.map (fun Y ->
+                    ((t.From, a, t.Stacktop), (t.To, Y))
+                )
             )
-            let δ : Transition<string, string, string> =
-                MapHelpers.groupFstSet transitions
-            Success (PushdownAutomaton (δ, q0, "Z0", Set.ofSeq F))
+
+            Result.sequence (Seq.toList transitions)
+            |> Result.map (fun ts ->
+                let δ = MapHelpers.groupFstSet ts
+                PushdownAutomaton (δ, q0, "Z0", Set.ofSeq F))
         | [] ->
             Error "The given PDA has no starting state."
         | q0s ->
