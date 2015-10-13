@@ -113,7 +113,7 @@ module EarleyParser =
                 | Some predicted -> Some predicted
                 | None -> None
 
-        for (i, c) in Seq.zip [0..inputSize] input do
+        for (i, c) in Seq.mapi (fun a b -> a, b) input do
             let processState getCurrentSet state =
                 match performStep i getCurrentSet state with
                 | Some results -> results
