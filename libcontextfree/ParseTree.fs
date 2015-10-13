@@ -10,6 +10,13 @@ type ParseTree<'nt, 't> =
     | ProductionNode of 'nt * ParseTree<'nt, 't> list
 
 module ParseTree =
+    /// Applies the given mapping functions to a 
+    /// parse tree.
+    let rec map (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) : ParseTree<'nt1, 't1> -> ParseTree<'nt2, 't2> =
+        function
+        | TerminalLeaf t -> TerminalLeaf(g t)
+        | ProductionNode(nt, items) -> ProductionNode(f nt, List.map (map f g) items)
+
     /// Computes the yield of a parse tree, which is a list of terminals.
     let rec treeYield (tree : ParseTree<'nt, 't>) : 't list =
         match tree with

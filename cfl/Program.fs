@@ -33,6 +33,11 @@ let subprograms : Subprogram list =
           Doc = "Read a parse tree and print its inferred grammar.";
           Action = performReadWrite readTreeGrammar writeCfgXmlFile };
 
+        { Name = "earley";
+          Doc = "Parses an input string from standard input according to the given grammar. \
+                 All possible parse trees are written to the given output location.";
+          Action = performEarleyParse };
+
         { Name = "tree-dot";
           Doc = "Read a parse tree and visualize it as a Graphviz .dot file.";
           Action = performReadWrite readParseTreeFile writeParseTreeGraphvizFile }
