@@ -112,10 +112,10 @@ let rec readStdinToEnd() : char list =
     | -1 -> [] // This indicates either Ctrl-Z or the end of the input file.
     | c  -> char c :: readStdinToEnd()
 
-let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (values : seq<'a>) : Result<unit> =
+let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (emptyResult : Result<unit>) (values : seq<'a>) : Result<unit> =
     let values = Seq.cache values
     if values |> Seq.isEmpty then
-        Success ()
+        emptyResult
     else
         if values |> Seq.skip 1
                   |> Seq.isEmpty then
@@ -138,7 +138,7 @@ let performEarleyParse (argv : string list) =
             let inputString = readStdinToEnd()
             inputString |> EarleyParser.parse grammar
                         |> Seq.map (ParseTree.map string string)
-                        |> writeAll writeParseTreeFile outputPath
+                        |> writeAll writeParseTreeFile outputPath (Error "The given string does not belong to the given grammar.")
                         |> Result.eprintf
         | Error e ->
             eprint e
