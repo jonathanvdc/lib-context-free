@@ -98,27 +98,43 @@ module EarleyParser =
         // The parser is seeded with S(0) consisting of only the top-level rules.
         setArray.[0] <- createStates grammar 0 grammar.S
 
+        // Performs a single complete/predict step on the ith set.
+        let performStep i getCurrentSet state =
+            let getSet j = 
+                if j = i then
+                    getCurrentSet()
+                else
+                    setArray.[j]
+
+            match complete getSet state with
+            | Some completed -> Some completed
+            | None ->
+                match predict grammar i state with
+                | Some predicted -> Some predicted
+                | None -> None
+
         for (i, c) in Seq.zip [0..inputSize] input do
             let processState getCurrentSet state =
-                let getSet j = 
-                    if j = i then
-                        getCurrentSet()
-                    else
-                        setArray.[j]
-                match complete getSet state with
-                | Some completed -> completed
+                match performStep i getCurrentSet state with
+                | Some results -> results
                 | None ->
-                    match predict grammar i state with
-                    | Some predicted -> predicted
+                    match scan c state with
+                    | Some scanned ->
+                        setArray.[i + 1] <- Set.add scanned setArray.[i + 1]
                     | None ->
-                        match scan c state with
-                        | Some scanned ->
-                            setArray.[i + 1] <- Set.add scanned setArray.[i + 1]
-                        | None ->
-                            ()
-                        Set.empty
+                        ()
+                    Set.empty
 
             setArray.[i] <- worklistSet processState setArray.[i]
+
+
+        // Performs the last step.
+        let performFinalStep getCurrentSet state =
+            match performStep inputSize getCurrentSet state with
+                | Some results -> results
+                | None -> Set.empty
+
+        setArray.[inputSize] <- worklistSet performFinalStep setArray.[inputSize]
         
         // Tries to interpret the given Earley state as a well-formed
         // parse tree in the language of the grammar. If that can't be
