@@ -52,7 +52,7 @@ module EarleyParser =
     /// Completion: For every state in S(k) of the form (X → γ •, j), 
     /// find states in S(j) of the form (Y → α • X β, i) and 
     /// add (Y → α X • β, i) to S(k).
-    let complete (allStates : Set<EarleyState<'nt, 't>>[]) : EarleyState<'nt, 't> -> Set<EarleyState<'nt, 't>> option =
+    let complete (getState : int -> Set<EarleyState<'nt, 't>>) : EarleyState<'nt, 't> -> Set<EarleyState<'nt, 't>> option =
         function
         | PartialRule(X, γ, []), j -> 
             // Tries to complete the given state with the above state.
@@ -66,22 +66,22 @@ module EarleyParser =
                 | _ ->
                     None
                 
-            allStates.[j] |> Seq.choose completeState
-                          |> Set.ofSeq
-                          |> Some
+            getState j |> Seq.choose completeState
+                       |> Set.ofSeq
+                       |> Some
         | _ -> 
             None
 
     /// Executes a "worklist" algorithm that operates on the given
     /// seed set. A single item is transformed into a set of new values by a function.
     /// Said function is never applied to the same value twice.
-    let worklistSet (f : 'a -> Set<'a>) (seed : Set<'a>) : Set<'a> =
+    let worklistSet (f : (unit -> Set<'a>) -> 'a -> Set<'a>) (seed : Set<'a>) : Set<'a> =
         let rec processWorklist (results : Set<'a>) (worklist : Set<'a>) : Set<'a> =
             if Set.isEmpty worklist then
                 results
             else
                 let firstElem = Seq.head worklist
-                let newElems = f firstElem
+                let newElems = f (fun () -> Set.union results worklist) firstElem
                 let newResults = Set.add firstElem results
                 // TODO: maybe computing the set difference here
                 //       is a little... slow. Perhaps there's a better way?
@@ -99,8 +99,13 @@ module EarleyParser =
         setArray.[0] <- createStates grammar 0 grammar.S
 
         for (i, c) in Seq.zip [0..inputSize] input do
-            let processState state =
-                match complete setArray state with
+            let processState getCurrentSet state =
+                let getSet j = 
+                    if j = i then
+                        getCurrentSet()
+                    else
+                        setArray.[j]
+                match complete getSet state with
                 | Some completed -> completed
                 | None ->
                     match predict grammar i state with
