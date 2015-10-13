@@ -131,8 +131,8 @@ module EarleyParser =
         // Performs the last step.
         let performFinalStep getCurrentSet state =
             match performStep inputSize getCurrentSet state with
-                | Some results -> results
-                | None -> Set.empty
+            | Some results -> results
+            | None -> Set.empty
 
         setArray.[inputSize] <- worklistSet performFinalStep setArray.[inputSize]
         
