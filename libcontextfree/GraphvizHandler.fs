@@ -87,12 +87,24 @@ module GraphvizHandler =
         // Visits a node, which involves creating edges for its children.
         // Resturn the constructed GraphvizNode after adding it to a list.
         and visit (node : ParseTree<string, string>) : GraphvizNode =
-            let result =
-                { Label = ParseTree.showTreeHead node;
+            match node with
+            | TerminalLeaf t -> 
+                { Label = string t;
+                  Shape = NoneShape;
+                  Edges = lazy [] }
+            | ProductionNode(nt, []) ->
+                let epsilonEdge = 
+                    { Label = "";
+                      Directed = true;
+                      Target = { Label = "ε"; Shape = NoneShape; Edges = lazy [] } }
+                
+                { Label = string nt;
+                  Shape = NoneShape;
+                  Edges = lazy [epsilonEdge] }
+            | ProductionNode(nt, items) ->
+                { Label = string nt;
                   Shape = NoneShape;
                   Edges = lazy List.map makeEdge (ParseTree.children node) }
-
-            result
 
         { Name = "PTREE";
           Nodes = [visit tree] }
