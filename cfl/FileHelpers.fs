@@ -133,7 +133,7 @@ let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (valu
 let performEarleyParse (argv : string list) =
     match argv with
     | [grammarPath; outputPath] ->
-        match readTreeGrammar grammarPath with
+        match readContextFreeGrammarFile grammarPath with
         | Success grammar ->
             let inputString = readStdinToEnd()
             inputString |> EarleyParser.parse grammar

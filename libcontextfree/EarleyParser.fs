@@ -110,7 +110,7 @@ module EarleyParser =
                         | Some scanned ->
                             setArray.[i + 1] <- Set.add scanned setArray.[i + 1]
                         | None ->
-                            raise (new System.InvalidOperationException("Something went wrong here."))
+                            ()
                         Set.empty
 
             setArray.[i] <- worklistSet processState setArray.[i]

@@ -38,8 +38,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Release\cfl.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>
-    </StartArguments>
+    <StartArguments>earley ..\..\..\tests\parse-trees\Regex.cfg ..\..\..\tests\parse-trees\NewRegex.ptree</StartArguments>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Data">
