@@ -62,6 +62,7 @@
     <Compile Include="TreeHandler.fs" />
     <Compile Include="GraphvizHandler.fs" />
     <Compile Include="XmlHandler.fs" />
+    <Compile Include="EarleyParser.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>
