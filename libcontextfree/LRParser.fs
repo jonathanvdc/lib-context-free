@@ -63,27 +63,36 @@ module LRParser =
     /// the list of remaining input terminals is returned (this may be useful for diagnostic purposes).
     let rec parseLR (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>)
                     (gotoTable : int -> 'nt -> int)
+                    (startState : int)
                     : ParserState<'nt, 't> -> Choice<ParseTree<'nt, 't>, 't list> = function
     | input, stack ->
         let peek = peekTerminal input
         let state = 
             match stack with
             | x :: _ -> snd x
-            | []     -> 0
+            | []     -> startState
 
         match actionTable state peek with
         | Shift n ->
             (input, stack) |> shift n 
-                           |> parseLR actionTable gotoTable
+                           |> parseLR actionTable gotoTable startState
         | Reduce rule ->
             (input, stack) |> reduce gotoTable rule
-                           |> parseLR actionTable gotoTable
+                           |> parseLR actionTable gotoTable startState
         | Accept ->
             match normalizeLRTree (stack |> List.head |> fst) with
             | Some tree -> Choice1Of2 tree
             | None      -> Choice2Of2 input
         | Fail ->
             Choice2Of2 input
+
+    /// Parses a terminal string based on the given LR table components.
+    let parse (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>) 
+              (gotoTable : int -> 'nt -> int)
+              (startState : int) 
+              (input : 't list) =
+        parseLR actionTable gotoTable startState (input, [])
+
 
     /// Defines LR(0) items, which are grammar rules with a special dot added somewhere in the right-hand side. 
     /// The 'dot' is represented by storing the rule's body in two lists.
@@ -229,6 +238,32 @@ module LRParser =
                 | _ -> 
                     // Nothing to do here, really.
                     ()
+
+        results
+
+    /// Gets the action at the given state/terminal cell in the LR table.
+    let getAction (table : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>) (state : int) (terminal : LRTerminal<'t>) : LRAction<'nt, 't> =
+        match Map.tryFind (state, terminal) table with
+        | Some action -> action
+        | None        -> Fail
+
+    /// Creates a goto table from the given closure and goto functions, set of nonterminals,
+    /// and set of states.
+    let gotoTable (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
+                  (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
+                  (nonterminals : Set<'nt>)
+                  (states : Map<Set<LRItem<'nt, 't> * 'a>, int>)
+                  : Map<int * 'nt, int> =
+
+        let mutable results = Map.empty
+
+        for KeyValue(state, stateIndex) in states do
+            let stateClosure = closure state
+            for nt in nonterminals do
+                let nextState = goto stateClosure (Nonterminal nt)
+                if not (Set.isEmpty nextState) then
+                    let nextStateIndex = Map.find nextState states
+                    results <- Map.add (stateIndex, nt) nextStateIndex results
         results
 
     /// Defines a goto function for LR(0) items: all items in the specified set whose
