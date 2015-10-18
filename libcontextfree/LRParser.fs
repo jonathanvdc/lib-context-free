@@ -51,14 +51,16 @@ module LRParser =
             let n = gotoTable p lhs
             ts, (newTree, n) :: remStack
 
-    /// "Normalizes" the given LR parser tree: end-of-input leaves are removed recursively.
+    /// "Normalizes" the given LR parser tree: end-of-input leaves are discarded recursively.
     let rec normalizeLRTree : ParseTree<'nt, LRTerminal<'t>> -> ParseTree<'nt, 't> option = function
     | TerminalLeaf (LRTerminal t) -> Some (TerminalLeaf t)
     | TerminalLeaf EndOfInput     -> None
     | ProductionNode(lhs, body)   ->
         Some (ProductionNode(lhs, List.choose normalizeLRTree body))
-
+    
     /// Applies the LR parsing algorithm recursively to the given action table, goto table and state.
+    /// A parse tree is returned if the parsing algorithm was successful. Otherwise,
+    /// the list of remaining input terminals is returned (this may be useful for diagnostic purposes).
     let rec parseLR (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>)
                     (gotoTable : int -> 'nt -> int)
                     : ParserState<'nt, 't> -> Choice<ParseTree<'nt, 't>, 't list> = function
@@ -83,3 +85,87 @@ module LRParser =
         | Error ->
             Choice2Of2 input
 
+    /// Defines LR(0) items, which are grammar rules with a special dot added somewhere in the right-hand side. 
+    /// The 'dot' is represented by storing the rule's body in two lists.
+    ///
+    /// For example the rule E → E + B has the following four corresponding items:
+    ///     E → • E + B
+    ///     E → E • + B
+    ///     E → E + • B
+    ///     E → E + B •
+    type LRItem<'nt, 't> = 
+        | LRItem of 'nt * Symbol<'nt, 't> list * Symbol<'nt, 't> list 
+
+        /// Gets the symbol directly after the dot.
+        member this.NextSymbol =
+            match this with
+            | LRItem(_, _, x :: _) -> Some x
+            | _                     -> None
+
+        override this.ToString() =
+            match this with
+            | LRItem(head, left, right) ->
+                sprintf "%O → %O • %O" head left right
+
+    /// An LR(0) item is defined as a pair of a a generic LR item
+    /// and zero terminals of lookahead.
+    type LR0Item<'nt, 't> = LRItem<'nt, 't> * unit
+
+    /// An LR(1) item is defined as a pair of a generic LR item
+    /// and a single terminal of lookahead.
+    type LR1Item<'nt, 't> = LRItem<'nt, 't> * 't
+
+    /// Any set of items can be extended by recursively adding all 
+    /// the appropriate items until all nonterminals preceded by dots are accounted for. 
+    /// The minimal extension is called the closure of an item set and written as closure(I) where I is an item set. 
+    /// It is these closed item sets that are taken as the states of the parser, 
+    /// although only the ones that are actually reachable from the begin state will be included in the tables.
+    ///
+    /// In this closure implementation, a context-free grammar and an item-creating function are passes as arguments:
+    /// said function takes an old item and a rule for the next item, and uses them to generate a 
+    /// set of new items.
+    let rec closure (createItem : LRItem<'nt, 't> * 'a -> ProductionRule<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>) 
+                    (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 'a>) = 
+        let getPairedNonterminals : ProductionRule<'nt, 't> -> ('nt * ProductionRule<'nt, 't>) option = function
+        | ProductionRule(lhs, Nonterminal _ :: _) as rule -> Some (lhs, rule)
+        | _ -> None
+
+        let pairedNonterms = grammar.P |> Seq.choose getPairedNonterminals
+                                       |> MapHelpers.groupFstSet
+
+        let induction ((lrItem : LRItem<'nt, 't>, _) as input) =
+            match lrItem.NextSymbol with
+            | Some (Nonterminal nt) ->
+                pairedNonterms.[nt] |> Set.map (createItem input)
+                                    |> Set.unionMany
+            | _ -> Set.empty
+
+        SetHelpers.closure induction basis
+
+    /// A specialization of the closure function for LR(0) items.
+    let closureLR0 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LR0Item<'nt, 't>>) =
+        let createItem (oldItem, _) = function
+        | ProductionRule(head, body) -> Set.singleton (LRItem(head, [], body), ())
+
+        closure createItem grammar basis
+
+    /// Computes the FIRST set for the given nonterminal map and nonterminal.
+    /// FIRST(A) is the set of terminals which can appear as the first element
+    /// of any chain of rules matching nonterminal A.
+    ///
+    /// The given nonterminal map associates every nonterminal with
+    /// all first symbols that occur in rules that have said 
+    /// nonterminal on their left-hand side.
+    ///
+    /// FIRST(A) is used when building LR(1) tables.
+    let first (nonterminalMap : Map<'nt, Set<Symbol<'nt, 't>>>) (sym : 'nt) : Set<'t> =
+        let induction : Symbol<'nt, 't> -> Set<Symbol<'nt, 't>> = function
+        | Nonterminal sym -> nonterminalMap.[sym]
+        | Terminal    _   -> Set.empty
+
+        Nonterminal sym |> Set.singleton 
+                        |> SetHelpers.closure induction
+                        |> Symbol.terminals
+                        |> Set.ofSeq
+
+    

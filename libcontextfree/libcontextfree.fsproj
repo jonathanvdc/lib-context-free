@@ -67,6 +67,7 @@
     <Compile Include="EarleyParser.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
+    <Compile Include="LRParser.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Data">
