@@ -8,9 +8,9 @@ module LRParser =
     /// Indicates that a reduction with the given grammar rule should be performed.
     | Reduce of ProductionRule<'nt, 't>
     /// Indicates that the LR parser has successfully parsed the input string.
-    | Done
+    | Accept
     /// Indicates that the LR parser could not parse the input string.
-    | Error
+    | Fail
 
     type LRTerminal<'t> = 
     | LRTerminal of 't
@@ -78,11 +78,11 @@ module LRParser =
         | Reduce rule ->
             (input, stack) |> reduce gotoTable rule
                            |> parseLR actionTable gotoTable
-        | Done ->
+        | Accept ->
             match normalizeLRTree (stack |> List.head |> fst) with
             | Some tree -> Choice1Of2 tree
             | None      -> Choice2Of2 input
-        | Error ->
+        | Fail ->
             Choice2Of2 input
 
     /// Defines LR(0) items, which are grammar rules with a special dot added somewhere in the right-hand side. 
@@ -93,19 +93,40 @@ module LRParser =
     ///     E → E • + B
     ///     E → E + • B
     ///     E → E + B •
+    ///
+    /// Note: because of how lists work in F#, this body on the left-hand
+    ///       side of the dot is stored in reverse order.
     type LRItem<'nt, 't> = 
         | LRItem of 'nt * Symbol<'nt, 't> list * Symbol<'nt, 't> list 
+
+        /// Gets the production rule associated with this LR item.
+        member this.Rule =
+            match this with
+            | LRItem(head, left, right) -> ProductionRule(head, List.append (List.rev left) right)
+
+        /// Gets the production rule's head for this LR item's
+        /// associated production rule.
+        member this.Head =
+            match this with
+            | LRItem(x, _, _) -> x
 
         /// Gets the symbol directly after the dot.
         member this.NextSymbol =
             match this with
             | LRItem(_, _, x :: _) -> Some x
-            | _                     -> None
+            | _                    -> None
+
+        /// Gets the item obtained by moving
+        /// the dot one symbol toward the right.
+        member this.NextItem = 
+            match this with
+            | LRItem(head, ls, r :: rs) -> Some(LRItem(head, r :: ls, rs))
+            | _                         -> None
 
         override this.ToString() =
             match this with
             | LRItem(head, left, right) ->
-                sprintf "%O → %O • %O" head left right
+                sprintf "%O → %O • %O" head (List.rev left) right
 
     /// An LR(0) item is defined as a pair of a a generic LR item
     /// and zero terminals of lookahead.
@@ -125,7 +146,8 @@ module LRParser =
     /// said function takes an old item and a rule for the next item, and uses them to generate a 
     /// set of new items.
     let rec closure (createItem : LRItem<'nt, 't> * 'a -> ProductionRule<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>) 
-                    (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 'a>) = 
+                    (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 'a>)
+                    : Set<LRItem<'nt, 't> * 'a> = 
         let getPairedNonterminals : ProductionRule<'nt, 't> -> ('nt * ProductionRule<'nt, 't>) option = function
         | ProductionRule(lhs, Nonterminal _ :: _) as rule -> Some (lhs, rule)
         | _ -> None
@@ -141,6 +163,83 @@ module LRParser =
             | _ -> Set.empty
 
         SetHelpers.closure induction basis
+
+    /// Computes the set of states, given a closure and goto function and 
+    /// an initial item.
+    /// A state is nothing more than a set of items.
+    let states (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
+               (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
+               (initState : Set<LRItem<'nt, 't> * 'a>)
+               : Set<Set<LRItem<'nt, 't> * 'a>> = 
+
+        let induction (state : Set<LRItem<'nt, 't> * 'a>) : Set<Set<LRItem<'nt, 't> * 'a>> =
+            let stateClosure = closure state
+
+            state |> SetHelpers.choose (fun (s, _) -> s.NextSymbol)
+                  |> Set.map (goto stateClosure)
+                  |> Set.filter (not << Set.isEmpty)
+            
+        SetHelpers.closure induction (Set.singleton initState)
+
+    /// Creates an action table from the given closure, goto and follow functions,
+    /// the grammar's starting symbol, and the set of states.
+    let actionTable (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
+                    (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
+                    (follow : 'nt -> Set<'t>)
+                    (startSymbol : 'nt)
+                    (states : Map<Set<LRItem<'nt, 't> * 'a>, int>)
+                    : Result<Map<int * LRTerminal<'t>, LRAction<'nt, 't>>> =
+        let mutable results = Success Map.empty
+        for KeyValue(state, stateIndex) in states do
+            let closureState = closure state
+            for (item, lookahead) in closureState do
+                match item.NextSymbol with
+                | Some(Terminal t) -> 
+                    // Try to shift.
+                    let addShift dict =
+                        let toIndex = states.[goto closureState (Terminal t)]
+                        let key = stateIndex, LRTerminal t
+                        match Map.tryFind key dict with
+                        | None -> Success (Map.add key (Shift toIndex) dict)
+                        | Some (Reduce reduceTarget) -> Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string reduceTarget))
+                        | Some _ -> Error (sprintf "Shift conflict: %A." (state |> Set.map (fst >> string) |> Set.toList))
+                    results <- Result.bind addShift results
+                | None ->
+                    if item.Head = startSymbol then
+                        // Starting symbol. Our work here is done.
+                        results <- Result.map (Map.add (stateIndex, EndOfInput) Accept) results
+                    else
+                        let addReduce symbol dict =
+                            let key = stateIndex, LRTerminal symbol
+                            match Map.tryFind key dict with
+                            | None -> Success (Map.add key (Reduce item.Rule) dict)
+                            | Some (Reduce reduceTarget) -> 
+                                Error (sprintf "Reduce/reduce conflict: %s and %s." (string item.Rule) (string reduceTarget))
+                            | Some (Shift shiftTarget) -> 
+                                let state = Map.findKey (fun key value -> value = shiftTarget) states
+                                Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string item.Rule))
+                            | _ -> 
+                                // This shouldn't happen, as it would indicate a Reduce/Accept conflict, 
+                                // which just doesn't make sense.
+                                Error "Unexpected reduce conflict. Fascinating."
+
+                        // Try to reduce.
+                        for t in follow item.Head do
+                            results <- Result.bind (addReduce t) results
+                | _ -> 
+                    // Nothing to do here, really.
+                    ()
+        results
+
+    /// Defines a goto function for LR(0) items: all items in the specified set whose
+    /// next symbol is the given label are taken, and their dot is shifted one position
+    /// to the right.
+    let gotoLR0 (grammar : ContextFreeGrammar<'nt, 't>) (from : Set<LR0Item<'nt, 't>>) 
+                (label : Symbol<'nt, 't>) : Set<LR0Item<'nt, 't>> =
+        from |> SetHelpers.choose (fun (x, ()) -> Option.map (fun y -> x, y) x.NextSymbol)
+             |> Set.filter (snd >> ((=) label))
+             |> SetHelpers.choose (fun (x, _) -> x.NextItem)
+             |> Set.map (fun x -> x, ())
 
     /// A specialization of the closure function for LR(0) items.
     let closureLR0 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LR0Item<'nt, 't>>) =
@@ -180,3 +279,4 @@ module LRParser =
 
         grammar.V |> Seq.map (fun sym -> sym, first firstSyms sym)
                   |> Map.ofSeq
+

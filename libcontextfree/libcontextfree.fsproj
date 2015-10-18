@@ -65,9 +65,9 @@
     <Compile Include="GraphvizHandler.fs" />
     <Compile Include="XmlHandler.fs" />
     <Compile Include="EarleyParser.fs" />
+    <Compile Include="LRParser.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
-    <Compile Include="LRParser.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Data">
