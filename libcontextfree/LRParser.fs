@@ -149,18 +149,18 @@ module LRParser =
 
         closure createItem grammar basis
 
-    /// Computes the FIRST set for the given nonterminal map and nonterminal.
+    /// Computes the FIRST set for the given first symbol map and nonterminal.
     /// FIRST(A) is the set of terminals which can appear as the first element
     /// of any chain of rules matching nonterminal A.
     ///
-    /// The given nonterminal map associates every nonterminal with
+    /// The given map associates every nonterminal with
     /// all first symbols that occur in rules that have said 
     /// nonterminal on their left-hand side.
     ///
     /// FIRST(A) is used when building LR(1) tables.
-    let first (nonterminalMap : Map<'nt, Set<Symbol<'nt, 't>>>) (sym : 'nt) : Set<'t> =
+    let first (firstSymbols : Map<'nt, Set<Symbol<'nt, 't>>>) (sym : 'nt) : Set<'t> =
         let induction : Symbol<'nt, 't> -> Set<Symbol<'nt, 't>> = function
-        | Nonterminal sym -> nonterminalMap.[sym]
+        | Nonterminal sym -> firstSymbols.[sym]
         | Terminal    _   -> Set.empty
 
         Nonterminal sym |> Set.singleton 
@@ -168,4 +168,15 @@ module LRParser =
                         |> Symbol.terminals
                         |> Set.ofSeq
 
-    
+    /// Computes a map that maps every nonterminal A in the given grammar
+    /// to their FIRST(A) set.
+    let firstSets (grammar : ContextFreeGrammar<'nt, 't>) : Map<'nt, Set<'t>> =
+        let getFirstSymbol : ProductionRule<'nt, 't> -> ('nt * Symbol<'nt, 't>) option = function
+        | ProductionRule(lhs, sym :: _) -> Some (lhs, sym)
+        | _ -> None
+
+        let firstSyms = grammar.P |> Seq.choose getFirstSymbol
+                                  |> MapHelpers.groupFstSet
+
+        grammar.V |> Seq.map (fun sym -> sym, first firstSyms sym)
+                  |> Map.ofSeq
