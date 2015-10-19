@@ -63,7 +63,7 @@ module ContextFreeGrammar =
             Error "Cannot infer a context-free grammar from a terminal leaf."
 
     /// Applies the given nonterminal and terminal mapping functions to the given grammar.
-    let symbolMap (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) (grammar : ContextFreeGrammar<'nt1, 't1>) : ContextFreeGrammar<'nt2, 't2> =
+    let mapSymbols (f : 'nt1 -> 'nt2) (g : 't1 -> 't2) (grammar : ContextFreeGrammar<'nt1, 't1>) : ContextFreeGrammar<'nt2, 't2> =
         match grammar with 
         | ContextFreeGrammar(P1, S1) ->
             // Converts a single production rule.
@@ -101,11 +101,20 @@ module ContextFreeGrammar =
                           |> Map.ofSeq
                 let convNonterminal (nt : string) : char = nonterminalMap.[nt]
                 let convTerminal    (t : string)  : char = Seq.exactlyOne t
-                Success (symbolMap convNonterminal convTerminal grammar)
+                Success (mapSymbols convNonterminal convTerminal grammar)
             else
                 // If there is a string with any length other than one,
                 // we can't perform this operation.
                 Error (sprintf "Couldn't convert CFG: it contains invalid terminals %A." invalidTerminals)
+
+    /// Converting a PushdownAutomaton<string, string> will result in a
+    /// ContextFreeGrammar<(string * string * string) option, string>. This will
+    /// turn that into a ContextFreeGrammar using brackets to name nonterminals.
+    let toBracketCfg : ContextFreeGrammar<(string * string * string) option, string>
+                    -> ContextFreeGrammar<string, string> =
+        let f = function | None -> "S"
+                         | Some (p, X, q) -> sprintf "[%s,%s,%s]" p X q
+        mapSymbols f id
 
     /// Show the nonterminals of a given context-free grammar as a new-line seperated list.
     let showNonterminals (grammar : ContextFreeGrammar<char, char>) : string =

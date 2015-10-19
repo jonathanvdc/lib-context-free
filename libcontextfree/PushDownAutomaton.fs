@@ -84,11 +84,36 @@ module PushdownAutomaton =
                                         (φ q', Y)) ps))
                 |> Map.ofList
             PushdownAutomaton(δ', r0, Z0, F')
+
+    /// Map a function φ over the input symbols of a PDA. φ should be injective.
+    let mapInputSymbols (φ : 'Σ -> 'Θ) : PushdownAutomaton<'Q, 'Σ, 'Γ> -> PushdownAutomaton<'Q, 'Θ, 'Γ> =
+        function
+        | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
+            let δ' =
+                Map.toList δ
+                |> List.map (fun ((q, a, X), ps) -> ((q, Option.map φ a, X), ps))
+                |> Map.ofList
+            PushdownAutomaton(δ', q0, Z0, F)
+
+    /// Map a function φ over the stack symbols of a PDA. φ should be injective.
+    let mapStackSymbols (φ : 'Γ -> 'Δ) : PushdownAutomaton<'Q, 'Σ, 'Γ> -> PushdownAutomaton<'Q, 'Σ, 'Δ> =
+        function
+        | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
+            let δ' =
+                Map.toList δ
+                |> List.map (fun ((q, a, X), ps) ->
+                    ((q, a, φ X), Set.map (fun (q', Y) ->
+                                        (q', List.map φ Y)) ps))
+                |> Map.ofList
+            let Z0' = φ Z0
+            PushdownAutomaton(δ', q0, Z0', F)
     
     /// Rename the states in a PDA to 0, 1, 2...
     let enumerate (pda : PushdownAutomaton<'Q, 'Σ, 'Γ>) : PushdownAutomaton<int, 'Σ, 'Γ> =
         let qmap = Map.ofSeq (Seq.mapi (fun i q -> q, i) pda.Q)
         mapStates (fun q -> Map.find q qmap) pda
+
+    
 
     /// Convert a pushdown automaton that accepts L on an empty stack
     /// to one that accepts L in its final states. (Slide 67)
@@ -176,7 +201,7 @@ module PushdownAutomaton =
 
     /// Convert a context-free grammar to a pushdown automaton. (Slide 75)
     /// TODO: tests!
-    let ofCFG : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
+    let ofCfg : ContextFreeGrammar<'nt, 't> -> PushdownAutomaton<unit, 't, Symbol<'nt, 't>> =
         function
         | CFG (V, T, P, S) ->
             // Our only state.
@@ -205,7 +230,7 @@ module PushdownAutomaton =
     ///     [pXq]    <=> Some (p, X, q)
     ///
     /// TODO: tests!
-    let toCFG : PushdownAutomaton<'Q, 'Σ, 'Γ> -> ContextFreeGrammar<('Q * 'Γ * 'Q) option, 'Σ> =
+    let toCfg : PushdownAutomaton<'Q, 'Σ, 'Γ> -> ContextFreeGrammar<('Q * 'Γ * 'Q) option, 'Σ> =
         function
         | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
             let Q' = Set.toList Q
@@ -233,8 +258,16 @@ module PushdownAutomaton =
             }
             ContextFreeGrammar (R, None)
     
+    /// Converting a ContextFreeGrammar<char, char> will result in a
+    /// PushdownAutomaton<unit, char, Symbol<char, char>>. This will
+    /// turn that into a PushdownAutomaton over strings.
+    let toStringPda : PushdownAutomaton<unit, char, Symbol<char, char>> -> PushdownAutomaton<string, string, string> =
+           mapStates (fun _ -> "q")
+        >> mapInputSymbols string
+        >> mapStackSymbols string
+
     /// A hard-coded if-else grammar automaton, stolen from Slide 69, for testing purposes.
-    let ifElseAutomaton : PushdownAutomaton<string, char, char> =
-        let δ = Map.ofList [("q", Some 'i', 'Z'), Set.singleton ("q", ['Z'; 'Z']);
-                            ("q", Some 'e', 'Z'), Set.singleton ("q", [])]
-        PushdownAutomaton (δ, "q", 'Z', Set.empty)
+    let ifElseAutomaton : PushdownAutomaton<string, string, string> =
+        let δ = Map.ofList [("q", Some "i", "Z"), Set.singleton ("q", ["Z"; "Z"]);
+                            ("q", Some "e", "Z"), Set.singleton ("q", [])]
+        PushdownAutomaton (δ, "q", "Z", Set.empty)

@@ -109,8 +109,8 @@ module GraphvizHandler =
         { Name = "PTREE";
           Nodes = [visit tree] }
 
-    /// Construct a Graphviz graph from a pushdown automaton over characters.
-    let createPushdownAutomatonGraph (pda : PushdownAutomaton<'Q, char, char>) : GraphvizGraph =
+    /// Construct a Graphviz graph from a pushdown automaton over strings.
+    let createPushdownAutomatonGraph (pda : PushdownAutomaton<'Q, string, string>) : GraphvizGraph =
         match PushdownAutomaton.enumerate pda with
         | PDA(Q, Σ, Γ, δ, q0, Z0, F) ->
             // We will memoize nodes to this mutable dictionary.
@@ -130,7 +130,7 @@ module GraphvizHandler =
                                     yield (qTarget, (a, Y, g)) ]
                     
                     // Group them by target.
-                    let groups : seq<int * (char option * char * char list) list> =
+                    let groups : seq<int * (string option * string * string list) list> =
                         MapHelpers.groupFst arrows |> Map.toSeq
 
                     // Create a new GraphvizNode with one edge for each target.
@@ -141,12 +141,12 @@ module GraphvizHandler =
                     nodeMap.Add(q, node)
                     node
 
-            and makeEdge qTarget (paths : seq<char option * char * char list>) =
+            and makeEdge qTarget (paths : seq<string option * string * string list>) =
                 // We want to display epsilon symbols and empty strings as ε.
                 let labelLine (a, Y, g) =
-                    let a' = defaultArg a 'ε'
-                    let g' = if List.isEmpty g then "ε" else new string (List.toArray g)
-                    sprintf "%c, %c / %s" a' Y g'
+                    let a' = defaultArg a "ε"
+                    let g' = if List.isEmpty g then "ε" else String.concat "" g
+                    sprintf "%s, %s / %s" a' Y g'
 
                 { Label = String.concat "\n" (Seq.map labelLine paths);
                   Directed = true;
@@ -166,5 +166,5 @@ module GraphvizHandler =
         createParseTreeGraph tree |> writeGraph writer
 
     /// Write the pushdown automaton to the given TextWriter in Graphviz format.
-    let writePushdownAutomatonGraph (writer : TextWriter) (pda : PushdownAutomaton<'Q, char, char>) : unit =
+    let writePushdownAutomatonGraph (writer : TextWriter) (pda : PushdownAutomaton<'Q, string, string>) : unit =
         writeGraph writer (createPushdownAutomatonGraph pda)

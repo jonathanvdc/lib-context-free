@@ -36,9 +36,15 @@ let readTreeGrammar (fileName : string) : Result<ContextFreeGrammar<char, char>>
 
 /// Tries to read a file that contains a context-free grammar over characters.
 /// If something goes wrong, log an error.
-let readContextFreeGrammarFile (fileName : string) : Result<ContextFreeGrammar<char, char>> =
+let readCfgXmlFile (fileName : string) : Result<ContextFreeGrammar<char, char>> =
     readFile fileName <| fun fs ->
         XmlHandler.toCfg (XmlHandler.CfgFile.Load(fs))
+
+/// Tries to read a file that contains a pushdown automaton over strings.
+/// If something goes wrong, log an error.
+let readPdaXmlFile (fileName : string) : Result<PushdownAutomaton<string, string, string>> =
+    readFile fileName <| fun fs ->
+        XmlHandler.toPda (XmlHandler.PdaFile.Load(fs))
 
 /// Perform a file write action that fails with a helpful error message.
 let writeFile (path : string) (action : FileStream -> unit) : Result<unit> =
@@ -69,10 +75,15 @@ let writeCfgXmlFile (path : string) (grammar : ContextFreeGrammar<char, char>) :
     let xmlNode = XmlHandler.ofCfg grammar
     writeFile path xmlNode.XElement.Save
 
-let writePdaGraphvizFile (path : string) (tree : PushdownAutomaton<'Q, char, char>) : Result<unit> =
+/// Tries to write the given string PDA to the given output file path.
+let writePdaXmlFile (path : string) (automaton : PushdownAutomaton<string, string, string>) : Result<unit> =
+    let xmlNode = XmlHandler.ofPda automaton
+    writeFile path xmlNode.XElement.Save
+
+let writePdaGraphvizFile (path : string) (automaton : PushdownAutomaton<'Q, string, string>) : Result<unit> =
     writeFile path <| fun fs ->
         use writer = new StreamWriter(fs)
-        GraphvizHandler.writePushdownAutomatonGraph writer tree
+        GraphvizHandler.writePushdownAutomatonGraph writer automaton
 
 /// Defines a subprogram that prints the given property of the parse tree
 /// in file referred to by the single argument.
@@ -89,8 +100,8 @@ let printTreeProperty (show : ParseTree<string, string> -> string) (argv : strin
 let maybePrintCfgProperty (show : ContextFreeGrammar<char, char> -> Result<string>) (argv : string list) =
     match argv with
     | [fileName] ->
-        readContextFreeGrammarFile fileName |> Result.bind show
-                                            |> Result.print
+        readCfgXmlFile fileName |> Result.bind show
+                                |> Result.print
     | _ ->
         eprint "The specified subprogram takes exactly one argument: \
                 the file name of the context-free grammar file."
@@ -100,17 +111,37 @@ let maybePrintCfgProperty (show : ContextFreeGrammar<char, char> -> Result<strin
 let printCfgProperty (show : ContextFreeGrammar<char, char> -> string) (argv : string list) =
     maybePrintCfgProperty (show >> Result.Success) argv
 
-/// Defines a subprogram function that reads input from a file, and writes it to another file.
-let performReadWrite (read : string -> Result<'a>)
-                     (write : string -> 'a -> Result<unit>)
-                     (argv : string list) =
+/// Defines a subprogram function that reads input from a file, performs a
+/// conversion, and writes it to another file.
+let performConversion (conversion : 'a -> Result<'b>)
+                      (read : string -> Result<'a>)
+                      (write : string -> 'b -> Result<unit>)
+                      (argv : string list) =
     match argv with
     | [inputFileName; outputFileName] ->
         Result.eprintf (read inputFileName
+                        |> Result.bind conversion
                         |> Result.bind (write outputFileName))
     | _ ->
         eprint "The specified subprogram takes exactly two arguments: \
                 the input and output file names."
+
+/// Defines a subprogram function that reads input from a file, and writes it
+/// to another file.
+let performReadWrite read write =
+    performConversion Success read write
+
+/// A full PDA-to-CFG conversion.
+let convertPdaToCfg : PushdownAutomaton<string, string, string> -> Result<ContextFreeGrammar<char, char>> =
+       PushdownAutomaton.toCfg
+    >> ContextFreeGrammar.toBracketCfg
+    >> ContextFreeGrammar.toCharacterGrammar
+
+/// A full CFG-to-PDA conversion.
+let convertCfgToPda : ContextFreeGrammar<char, char> -> Result<PushdownAutomaton<string, string, string>> =
+       PushdownAutomaton.ofCfg
+    >> PushdownAutomaton.toStringPda
+    >> Success
 
 /// Reads standard input to completion as a list of characters.
 let rec readStdinToEnd() : char list =
@@ -151,7 +182,7 @@ let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (empt
 let performParse (parse : ContextFreeGrammar<char, char> -> char list -> Result<#seq<ParseTree<char, char>>>) (argv : string list) =
     match argv with
     | [grammarPath; outputPath] ->
-        match readContextFreeGrammarFile grammarPath with
+        match readCfgXmlFile grammarPath with
         | Success grammar ->
             let inputString = readStdinToTrimmedEnd()
             inputString |> parse grammar

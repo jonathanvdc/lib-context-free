@@ -58,10 +58,17 @@ let subprograms : Subprogram list =
           Doc = "Read a context-free grammar and print its start symbol.";
           Action = printCfgProperty ContextFreeGrammar.showStartSymbol }
 
+        { Name = "cfg-to-pda";
+          Doc = "Read a context-free grammar and convert it to a pushdown automaton.";
+          Action = performConversion convertCfgToPda readCfgXmlFile writePdaXmlFile }
+
+        { Name = "pda-to-cfg";
+          Doc = "Read a pushdown automaton and convert it to a context-free grammar.";
+          Action = performConversion convertPdaToCfg readPdaXmlFile writeCfgXmlFile }
+
         { Name = "pda-dot";
           Doc = "Outputs a dot file that represents an if-else push-down automaton.";
-          // TODO: PLEASE, IMPLEMENT ME
-          Action = performReadWrite (fun _ -> Success PushdownAutomaton.ifElseAutomaton) writePdaGraphvizFile }
+          Action = performReadWrite readPdaXmlFile writePdaGraphvizFile }
 
         { Name = "lr0-table";
           Doc = "Builds and prints an LR(0) table for the given input grammar.";
