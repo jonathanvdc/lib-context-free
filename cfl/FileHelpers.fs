@@ -86,7 +86,7 @@ let printTreeProperty (show : ParseTree<string, string> -> string) (argv : strin
 
 /// Defines a subprogram that prints the given property of the context-free grammar
 /// in file referred to by the single argument.
-let printCFGProperty (show : ContextFreeGrammar<char, char> -> string) (argv : string list) =
+let printCfgProperty (show : ContextFreeGrammar<char, char> -> string) (argv : string list) =
     match argv with
     | [fileName] ->
         Result.printWith show (readContextFreeGrammarFile fileName)

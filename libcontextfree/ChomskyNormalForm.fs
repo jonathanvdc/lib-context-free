@@ -21,8 +21,8 @@ type ChomskyNormalRule<'nt, 't> =
 
 /// A fully CNF-converted context-free grammar.
 ///
-type ChomskyNormalCFG<'nt, 't when 'nt : comparison and 't : comparison> =
-    | ChomskyNormalCFG of Set<ChomskyNormalRule<'nt, 't>>
+type ChomskyNormalCfg<'nt, 't when 'nt : comparison and 't : comparison> =
+    | ChomskyNormalCfg of Set<ChomskyNormalRule<'nt, 't>>
 
 module ChomskyNormalForm =
     ///////////////
@@ -34,8 +34,8 @@ module ChomskyNormalForm =
     | SProductionRule of 'nt option * Symbol<'nt, 't> list
 
     /// A context-free grammar, after the START step in the CNF conversion.
-    type StartCFG<'nt, 't when 'nt : comparison and 't : comparison> =
-    | StartCFG of Set<StartRule<'nt, 't>>
+    type StartCfg<'nt, 't when 'nt : comparison and 't : comparison> =
+    | StartCfg of Set<StartRule<'nt, 't>>
 
     /// A production rule, after the TERM step in the CNF conversion.
     type TermRule<'nt, 't> =
@@ -43,8 +43,8 @@ module ChomskyNormalForm =
     | TTerminalRule of 'nt * 't
 
     /// A context-free grammar, after the TERM step in the CNF conversion.
-    type TermCFG<'nt, 't when 'nt : comparison and 't : comparison> =
-    | TermCFG of Set<TermRule<'nt, 't>>
+    type TermCfg<'nt, 't when 'nt : comparison and 't : comparison> =
+    | TermCfg of Set<TermRule<'nt, 't>>
 
     /// A production rule, after the BIN step in the CNF conversion.
     type BinRule<'nt, 't> =
@@ -54,8 +54,8 @@ module ChomskyNormalForm =
     | BEpsilonRule of 'nt option
 
     /// A context-free grammar, after the BIN step in the CNF conversion.
-    type BinCFG<'nt, 't when 'nt : comparison and 't : comparison> =
-    | BinCFG of Set<BinRule<'nt, 't>>
+    type BinCfg<'nt, 't when 'nt : comparison and 't : comparison> =
+    | BinCfg of Set<BinRule<'nt, 't>>
 
     /// A production rule, after the DEL step in the CNF conversion.
     type DelRule<'nt, 't> =
@@ -65,8 +65,8 @@ module ChomskyNormalForm =
     | DStartToEpsilon
 
     /// A context-free grammar, after the DEL step in the CNF conversion.
-    type DelCFG<'nt, 't when 'nt : comparison and 't : comparison> =
-    | DelCFG of Set<DelRule<'nt, 't>>
+    type DelCfg<'nt, 't when 'nt : comparison and 't : comparison> =
+    | DelCfg of Set<DelRule<'nt, 't>>
 
     //////////////////////////////
     // CNF transformation steps //
@@ -74,7 +74,7 @@ module ChomskyNormalForm =
 
     /// Step one in the CNF transformation: add a new start symbol.
     /// (The new start symbol is None; S is no longer the start symbol.)
-    let startStep : ContextFreeGrammar<'nt, 't> -> StartCFG<'nt, 't> =
+    let startStep : ContextFreeGrammar<'nt, 't> -> StartCfg<'nt, 't> =
         function
         | ContextFreeGrammar(P, S) ->
             let convertRule (ProductionRule(head, body)) =
@@ -82,7 +82,7 @@ module ChomskyNormalForm =
 
             let P' = Set.map convertRule P
                   |> Set.add (SProductionRule (None, [Nonterminal S]))
-            StartCFG P'
+            StartCfg P'
 
     /// Step two in the CNF transformation: split into terminal and nonterminal rules.
     /// The resulting nonterminal type is Symbol<'nt, 't>, where
@@ -90,9 +90,9 @@ module ChomskyNormalForm =
     ///     * Nonterminal nt   corresponds to a nonterminal from the old 'nt type
     ///     * Terminal t       corresponds to the terminals N_t introduced in this step.
     ///
-    let termStep : StartCFG<'nt, 't> -> TermCFG<Symbol<'nt, 't>, 't> =
+    let termStep : StartCfg<'nt, 't> -> TermCfg<Symbol<'nt, 't>, 't> =
         function
-        | StartCFG P ->
+        | StartCfg P ->
             // Wrap the original rules in a `Nonterminal`.
             let convertRule (SProductionRule(head, body)) =
                 TNonterminalRule(Option.map Nonterminal head, body)
@@ -110,15 +110,15 @@ module ChomskyNormalForm =
             let P2 : Set<TermRule<Symbol<'nt, 't>, 't>> =
                 Set.map (fun t -> TTerminalRule (Terminal t, t)) terminals
 
-            // Join them to make a TermCFG.
-            TermCFG (Set.union P1 P2)
+            // Join them to make a TermCfg.
+            TermCfg (Set.union P1 P2)
 
     /// Step three in the CNF transformation: make rules binary.
     /// The new nonterminal type has an additional "index", letting us
     /// turn a nonterminal N into many nonterminals (N,0), (N,1), ...
-    let binStep : TermCFG<'nt, 't> -> BinCFG<'nt * int, 't> =
+    let binStep : TermCfg<'nt, 't> -> BinCfg<'nt * int, 't> =
         function
-        | TermCFG P ->
+        | TermCfg P ->
             let convertRule : TermRule<'nt, 't> -> Set<BinRule<'nt * int, 't>> =
                 function
                 | TNonterminalRule(Some H, body) ->
@@ -145,15 +145,15 @@ module ChomskyNormalForm =
                     raise (new System.InvalidOperationException())
 
             let P' = Set.unionMany (Set.map convertRule P)
-            BinCFG P'
+            BinCfg P'
 
     /// Step four in the CNF transformation: delete ε-rules.
     /// First, we find all the nullable states using a breadth-first
     /// search. Then, we "inline" the found ε-rules wherever they occur
     /// in other rules' bodies.
-    let delStep : BinCFG<'nt, 't> -> DelCFG<'nt, 't> =
+    let delStep : BinCfg<'nt, 't> -> DelCfg<'nt, 't> =
         function
-        | BinCFG P ->
+        | BinCfg P ->
             let baseNullableFromRule : BinRule<'nt, 't> -> 'nt option =
                 function | BEpsilonRule(Some H) -> Some H
                          | _ -> None
@@ -204,13 +204,13 @@ module ChomskyNormalForm =
                 | BUnitRule(x, y)     -> Set.singleton (DUnitRule(x, y))
             
             let P' = Set.unionMany (Set.map convertRule P)
-            DelCFG P'
+            DelCfg P'
 
     /// Step five in the CNF transformation: delete unit rules.
-    let unitStep : DelCFG<'nt, 't> -> ChomskyNormalCFG<'nt, 't> =
+    let unitStep : DelCfg<'nt, 't> -> ChomskyNormalCfg<'nt, 't> =
         (fun x -> raise (new System.NotImplementedException()))
         // function
-        // | DelCFG P ->
+        // | DelCfg P ->
         //     let rulesFrom (H : 'nt) =
         //         P |> Set.filter (function | DUnitRule(Some h, _) -> H = h
         //                                   | DBinaryRule(h, _)    -> H = h
@@ -225,8 +225,8 @@ module ChomskyNormalForm =
         //         | DStartToEpsilon        -> Set.singleton (StartToEpsilon)
         // 
         //     let P' = Set.unionMany (Set.map convertRule P)
-        //     ChomskyNormalCFG P'
+        //     ChomskyNormalCfg P'
 
     let chomskyNormalForm<'nt, 't when 'nt : comparison and 't : comparison>
-            : ContextFreeGrammar<'nt, 't> -> ChomskyNormalCFG<Symbol<'nt, 't> * int, 't> =
+            : ContextFreeGrammar<'nt, 't> -> ChomskyNormalCfg<Symbol<'nt, 't> * int, 't> =
         startStep >> termStep >> binStep >> delStep >> unitStep

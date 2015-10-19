@@ -44,19 +44,19 @@ let subprograms : Subprogram list =
 
         { Name = "cfg-nonterminals";
           Doc = "Read a context-free grammar and print its nonterminals.";
-          Action = printCFGProperty ContextFreeGrammar.showNonterminals }
+          Action = printCfgProperty ContextFreeGrammar.showNonterminals }
 
         { Name = "cfg-terminals";
           Doc = "Read a context-free grammar and print its terminals.";
-          Action = printCFGProperty ContextFreeGrammar.showTerminals }
+          Action = printCfgProperty ContextFreeGrammar.showTerminals }
 
         { Name = "cfg-rules";
           Doc = "Read a context-free grammar and print its rules.";
-          Action = printCFGProperty ContextFreeGrammar.showRules }
+          Action = printCfgProperty ContextFreeGrammar.showRules }
 
         { Name = "cfg-start-symbol";
           Doc = "Read a context-free grammar and print its start symbol.";
-          Action = printCFGProperty ContextFreeGrammar.showStartSymbol }
+          Action = printCfgProperty ContextFreeGrammar.showStartSymbol }
 
         { Name = "pda-dot";
           Doc = "Outputs a dot file that represents an if-else push-down automaton.";
