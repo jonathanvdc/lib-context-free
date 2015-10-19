@@ -143,7 +143,7 @@ module LRParser =
                 let showList xs = 
                     xs |> Seq.map string
                        |> String.concat ""
-                sprintf "%s → %s • %s" (head.ToString()) (left |> List.rev |> showList) (showList right)
+                sprintf "%s -> %s . %s" (head.ToString()) (left |> List.rev |> showList) (showList right)
 
     /// An LR(0) item is defined as a pair of a a generic LR item
     /// and zero terminals of lookahead.
@@ -165,17 +165,16 @@ module LRParser =
     let rec closure (createItem : LRItem<'nt, 't> * 'a -> ProductionRule<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>) 
                     (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 'a>)
                     : Set<LRItem<'nt, 't> * 'a> = 
-        let getPairedNonterminals : ProductionRule<'nt, 't> -> ('nt * ProductionRule<'nt, 't>) option = function
-        | ProductionRule(lhs, Nonterminal _ :: _) as rule -> Some (lhs, rule)
-        | _ -> None
+        let groupRules : ProductionRule<'nt, 't> -> 'nt * ProductionRule<'nt, 't> = function
+        | ProductionRule(lhs, _) as rule -> lhs, rule
 
-        let pairedNonterms = grammar.P |> Seq.choose getPairedNonterminals
-                                       |> MapHelpers.groupFstSet
+        let groupedRules = grammar.P |> Seq.map groupRules
+                                     |> MapHelpers.groupFstSet
 
         let induction ((lrItem : LRItem<'nt, 't>, _) as input) =
             match lrItem.NextSymbol with
             | Some (Nonterminal nt) ->
-                match Map.tryFind nt pairedNonterms with
+                match Map.tryFind nt groupedRules with
                 | Some nts ->
                     nts |> Set.map (createItem input)
                         |> Set.unionMany
@@ -196,9 +195,9 @@ module LRParser =
         let induction (state : Set<LRItem<'nt, 't> * 'a>) : Set<Set<LRItem<'nt, 't> * 'a>> =
             let stateClosure = closure state
 
-            state |> SetHelpers.choose (fun (s, _) -> s.NextSymbol)
-                  |> Set.map (goto stateClosure)
-                  |> Set.filter (not << Set.isEmpty)
+            stateClosure |> SetHelpers.choose (fun (s, _) -> s.NextSymbol)
+                         |> Set.map (goto stateClosure)
+                         |> Set.filter (not << Set.isEmpty)
             
         SetHelpers.closure induction (Set.singleton initState)
 
@@ -218,7 +217,7 @@ module LRParser =
                 | Some(Terminal t) -> 
                     // Try to shift.
                     let addShift dict =
-                        let toIndex = states.[goto closureState (Terminal t)]
+                        let toIndex = Map.find (goto closureState (Terminal t)) states
                         let key = stateIndex, LRTerminal t
                         match Map.tryFind key dict with
                         | None -> Success (Map.add key (Shift toIndex) dict)
