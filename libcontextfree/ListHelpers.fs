@@ -68,6 +68,21 @@ module ListHelpers =
                     : ('a list * 'b * 'a list) option =
         splitAtFirstOrder List.rev pred items
 
+    /// Splits the given list into two lists at the given index.
+    ///
+    /// For example:
+    ///
+    ///     splitAtIndex 2 [1; 2; 3; 4; 5]
+    ///     = [1; 2], [3; 4; 5]
+    let rec splitAtIndex (index : int) (items : 'a list) : 'a list * 'a list =
+        match index, items with
+        | (0, _)       -> [], items
+        | (_, [])      -> [], []
+        | (_, x :: xs) ->
+            let first, second = splitAtIndex (index - 1) xs
+            x :: first, second
+                
+
     /// The Cartesian nth power of a list, i.e. l × l × ... × l. (Be careful:
     /// this computes a list containing |l|^n elements, which can be large.)
     let rec cartesianPower (n : int) (l : 'a list) =
