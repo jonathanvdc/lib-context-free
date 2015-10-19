@@ -37,6 +37,12 @@ module LRParser =
         | [], stack ->
             [], (TerminalLeaf EndOfInput, n) :: stack
 
+    /// Peeks a single item from the stack.
+    let peekStack (startState : 'a) (stack : ('b * 'a) list) =
+        match stack with
+        | x :: _ -> snd x
+        | []     -> startState
+
     /// Remove the matched topmost L symbols (and parse trees and associated state numbers) from the parse stack.
     /// This exposes a prior state p that was expecting an instance of the Lhs symbol.
     /// Join the L parse trees together as one parse tree with new root symbol Lhs.
@@ -45,14 +51,14 @@ module LRParser =
     /// Push next state n onto the parse stack as the new current state.
     /// The lookahead and input stream remain unchanged.
     let reduce (gotoTable : int -> 'nt -> int) 
+               (startState : int)
                (rule : ProductionRule<'nt, 't>) 
                (state : ParserState<'nt, 't>) : ParserState<'nt, 't> = 
         match rule, state with
         | ProductionRule(lhs, body), (ts, stack) ->
             let elems, remStack = ListHelpers.splitAtIndex (List.length body) stack
             let newTree = ProductionNode(lhs, List.map fst elems)
-            let p = remStack |> List.head
-                             |> snd
+            let p = peekStack startState remStack
             let n = gotoTable p lhs
             ts, (newTree, n) :: remStack
 
@@ -72,17 +78,14 @@ module LRParser =
                     : ParserState<'nt, 't> -> Choice<ParseTree<'nt, 't>, 't list> = function
     | input, stack ->
         let peek = peekTerminal input
-        let state = 
-            match stack with
-            | x :: _ -> snd x
-            | []     -> startState
+        let state = peekStack startState stack
 
         match actionTable state peek with
         | Shift n ->
             (input, stack) |> shift n 
                            |> parseLR actionTable gotoTable startState
         | Reduce rule ->
-            (input, stack) |> reduce gotoTable rule
+            (input, stack) |> reduce gotoTable startState rule
                            |> parseLR actionTable gotoTable startState
         | Accept ->
             match normalizeLRTree (stack |> List.head |> fst) with
