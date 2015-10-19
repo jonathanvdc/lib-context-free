@@ -25,8 +25,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Debug\cfl.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>
-    </StartArguments>
+    <StartArguments>lr0-parse ..\..\..\tests\parse-trees\LRTest.cfg ..\..\..\tests\parse-trees\output.ptree</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -38,7 +37,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Release\cfl.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>earley ..\..\..\tests\parse-trees\Regex.cfg ..\..\..\tests\parse-trees\NewRegex.ptree</StartArguments>
+    <StartArguments>lr0-parse ..\..\..\tests\parse-trees\LRTest.cfg ..\..\..\tests\parse-trees\output.ptree</StartArguments>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Data">

@@ -57,7 +57,7 @@ module LRParser =
         match rule, state with
         | ProductionRule(lhs, body), (ts, stack) ->
             let elems, remStack = ListHelpers.splitAtIndex (List.length body) stack
-            let newTree = ProductionNode(lhs, List.map fst elems)
+            let newTree = ProductionNode(lhs, List.rev (List.map fst elems))
             let p = peekStack startState remStack
             let n = gotoTable p lhs
             ts, (newTree, n) :: remStack
@@ -74,7 +74,7 @@ module LRParser =
     /// the list of remaining input terminals is returned (this may be useful for diagnostic purposes).
     let rec parseLR (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>)
                     (gotoTable : int -> 'nt -> int)
-                    (startState : int)
+                    (startSymbol : 'nt, startState : int)
                     : ParserState<'nt, 't> -> Choice<ParseTree<'nt, 't>, 't list> = function
     | input, stack ->
         let peek = peekTerminal input
@@ -83,21 +83,23 @@ module LRParser =
         match actionTable state peek with
         | Shift n ->
             (input, stack) |> shift n 
-                           |> parseLR actionTable gotoTable startState
+                           |> parseLR actionTable gotoTable (startSymbol, startState)
         | Reduce rule ->
             (input, stack) |> reduce gotoTable startState rule
-                           |> parseLR actionTable gotoTable startState
+                           |> parseLR actionTable gotoTable (startSymbol, startState)
         | Accept ->
-            match normalizeLRTree (stack |> List.head |> fst) with
-            | Some tree -> Choice1Of2 tree
-            | None      -> Choice2Of2 input
+            let items = stack |> List.map fst
+                              |> List.choose normalizeLRTree
+                              |> List.rev
+
+            Choice1Of2 (ProductionNode(startSymbol, items))
         | Fail ->
             Choice2Of2 input
 
     /// Parses a terminal string based on the given LR table components.
     let parse (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>) 
               (gotoTable : int -> 'nt -> int)
-              (startState : int) 
+              (startState : 'nt * int) 
               (input : 't list) =
         parseLR actionTable gotoTable startState (input, [])
 
@@ -228,27 +230,29 @@ module LRParser =
                         | Some _ -> Error (sprintf "Shift conflict: %A." (state |> Set.map (fst >> string) |> Set.toList))
                     results <- Result.bind addShift results
                 | None ->
+                    let addReduce symbol dict =
+                        let key = stateIndex, symbol
+                        match Map.tryFind key dict with
+                        | None -> Success (Map.add key (Reduce item.Rule) dict)
+                        | Some (Reduce reduceTarget) -> 
+                            Error (sprintf "Reduce/reduce conflict: %s and %s." (string item.Rule) (string reduceTarget))
+                        | Some (Shift shiftTarget) -> 
+                            let state = Map.findKey (fun key value -> value = shiftTarget) states
+                            Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string item.Rule))
+                        | _ -> 
+                            // This shouldn't happen, as it would indicate a Reduce/Accept conflict, 
+                            // which just doesn't make sense.
+                            Error "Unexpected reduce conflict. Fascinating."
+
+                    // Try to reduce.
+                    for t in follow item.Head do
+                        results <- Result.bind (addReduce (LRTerminal t)) results
                     if item.Head = startSymbol then
                         // Starting symbol. Our work here is done.
                         results <- Result.map (Map.add (stateIndex, EndOfInput) Accept) results
                     else
-                        let addReduce symbol dict =
-                            let key = stateIndex, LRTerminal symbol
-                            match Map.tryFind key dict with
-                            | None -> Success (Map.add key (Reduce item.Rule) dict)
-                            | Some (Reduce reduceTarget) -> 
-                                Error (sprintf "Reduce/reduce conflict: %s and %s." (string item.Rule) (string reduceTarget))
-                            | Some (Shift shiftTarget) -> 
-                                let state = Map.findKey (fun key value -> value = shiftTarget) states
-                                Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string item.Rule))
-                            | _ -> 
-                                // This shouldn't happen, as it would indicate a Reduce/Accept conflict, 
-                                // which just doesn't make sense.
-                                Error "Unexpected reduce conflict. Fascinating."
-
-                        // Try to reduce.
-                        for t in follow item.Head do
-                            results <- Result.bind (addReduce t) results
+                        // Don't forget to insert a reduce action into the eof column.
+                        results <- Result.bind (addReduce EndOfInput) results
                 | _ -> 
                     // Nothing to do here, really.
                     ()
@@ -342,7 +346,7 @@ module LRParser =
         let gotos = gotoTable closure goto grammar.V stateMap
         let initStateIndex = Map.find initState stateMap
 
-        Result.map (fun actionMap -> actionMap, gotos, initStateIndex) actions
+        Result.map (fun actionMap -> actionMap, gotos, (grammar.S, initStateIndex)) actions
 
     /// Creates an LR(0) parser from the given grammar.
     /// If this cannot be done, an error message is returned.
@@ -353,15 +357,15 @@ module LRParser =
         createLR closure gotoLR0 follow ignore grammar
 
     type LRMapParser<'nt, 't when 'nt : comparison and 't : comparison> = 
-        Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * int
+        Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * ('nt * int)
 
     type LRFunctionalParser<'nt, 't> = 
-        (int -> LRTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * int
+        (int -> LRTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * ('nt * int)
 
     /// Converts the given parser, which has a
     /// map-based action and goto table, to a parser
     /// that uses a function-based action and goto table.
-    let toFunctionalParser (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : int) 
+    let toFunctionalParser (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : 'nt * int) 
                            : LRFunctionalParser<'nt, 't> = 
         getAction actionTable, (fun i nt -> Map.find (i, nt) gotoTable), startState
 
@@ -386,7 +390,7 @@ module LRParser =
               |> String.concat (System.Environment.NewLine + horizSep + System.Environment.NewLine)
 
     /// Prints an LR parser triple.
-    let printLR (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : int)
+    let printLR (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, (_ : 'nt, startState : int))
                 : string =
         let actionStates = actionTable |> Seq.map (fun (KeyValue((i, _), _)) -> i)
                                        |> Set.ofSeq
