@@ -249,7 +249,7 @@ module PushdownAutomaton =
                             let rs' = List.toArray rs
                             if k > 0 then
                                 let head = Some (q, X, rs'.[k - 1])
-                                let chain = List.zip3 (r :: rs) Ys rs
+                                let chain = ListHelpers.zip3Truncate (r :: rs) Ys rs
                                 let body = List.append a' (List.map (Nonterminal << Some) chain)
                                 yield ProductionRule(head, body)
                             else

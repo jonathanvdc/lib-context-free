@@ -91,3 +91,11 @@ module ListHelpers =
         | n -> [ for x in l do
                      for xs in cartesianPower (n - 1) l do
                          yield x :: xs ]
+
+    /// Combines the three lists into a list of triples. The result is
+    /// truncated whenever any of the lists is empty.
+    let rec zip3Truncate (xxs : 'x list) (yys : 'y list) (zzs : 'z list) =
+        match xxs, yys, zzs with
+        | (x :: xs), (y :: ys), (z :: zs) ->
+            (x, y, z) :: zip3Truncate xs ys zs
+        | _ -> []
