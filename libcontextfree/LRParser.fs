@@ -359,8 +359,8 @@ module LRParser =
 
     let private showTable (show : 'c -> string) (cellWidth : int) (rows : seq<'a>) (columns : seq<'b>) (table : Map<'a * 'b, 'c>) =
         let actualWidth = cellWidth + 2
-        let rowCount = Seq.length rows
-        let horizSep = String.replicate (actualWidth * rowCount + rowCount + 1) "-"
+        let colCount = Seq.length columns
+        let horizSep = String.replicate ((actualWidth + 1) * (colCount + 1) - 1) "-"
 
         let showCellContents text =
             let text = " " + text
@@ -368,11 +368,11 @@ module LRParser =
 
         let getCellValue row column =
             match Map.tryFind (row, column) table with
-            | Some x -> show x
-            | None   -> ""
+            | Some x -> showCellContents (show x)
+            | None   -> showCellContents ""
 
         let cells = rows |> Seq.map (fun r -> Seq.append (seq [showCellContents (r.ToString())]) (Seq.map (fun c -> getCellValue r c) columns))
-        let cells = Seq.append (seq [(columns |> Seq.map (fun c -> showCellContents(c.ToString())))]) cells
+        let cells = Seq.append [Seq.append [showCellContents ""] (columns |> Seq.map (fun c -> showCellContents(c.ToString())))] cells
 
         cells |> Seq.map (String.concat "|")
               |> String.concat (System.Environment.NewLine + horizSep + System.Environment.NewLine)
@@ -425,7 +425,7 @@ module LRParser =
         let actionTable = showTable showAction cellWidth allStates allTerminals actionTable
         let gotoTable = showTable string cellWidth allStates allNonterminals gotoTable
 
-        ["Rules:"; printedRules; 
-         "Action table:"; actionTable; 
+        ["Rules:"; printedRules; "";
+         "Action table:"; actionTable; "";
          "Goto table:"; gotoTable] 
          |> String.concat System.Environment.NewLine
