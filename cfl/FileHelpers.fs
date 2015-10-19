@@ -173,15 +173,12 @@ let performEarleyParse =
     performParse parseEarley
 
 let performLRParse (createParser : ContextFreeGrammar<char, char> -> Result<LRParser.LRMapParser<char, char>>) =
-    let parseLR (grammar : ContextFreeGrammar<char, char>)
-                (input : char list) =
-        let processResult = function
-        | Choice1Of2 tree -> [tree]
-        | Choice2Of2 _    -> []
-
-        createParser grammar |> Result.map LRParser.toFunctionalParser  
-                             |> Result.map ((<|||) LRParser.parse)
-                             |> Result.map ((|>) input)
-                             |> Result.map processResult
+    let parseLR (grammar : ContextFreeGrammar<char, char>) (input : char list) =
+        createParser grammar |> Result.map (fun parser ->
+            let parseInput = LRParser.parse <||| LRParser.toFunctionalParser parser
+            match parseInput input with
+            | Choice1Of2 tree -> [tree]
+            | Choice2Of2 _    -> []
+        )
 
     performParse parseLR
