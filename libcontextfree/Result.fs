@@ -53,6 +53,12 @@ module Result =
         | Success a -> printfn "%s" (f a)
         | Error e -> eprintfn "%s" e
 
+    /// Print an Error, or the Success value.
+    /// Success and Error values are printed to stdout and stderr, respectively;
+    /// in both cases, a newline is appended.
+    let print : Result<string> -> unit = 
+        printWith id
+
     /// Print an Error to stderr, or do nothing for Success ().
     let eprintf : Result<unit> -> unit =
         function

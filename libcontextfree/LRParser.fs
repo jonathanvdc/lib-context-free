@@ -140,7 +140,10 @@ module LRParser =
         override this.ToString() =
             match this with
             | LRItem(head, left, right) ->
-                sprintf "%O → %O • %O" head (List.rev left) right
+                let showList xs = 
+                    xs |> Seq.map string
+                       |> String.concat ""
+                sprintf "%s → %s • %s" (head.ToString()) (left |> List.rev |> showList) (showList right)
 
     /// An LR(0) item is defined as a pair of a a generic LR item
     /// and zero terminals of lookahead.
@@ -172,8 +175,12 @@ module LRParser =
         let induction ((lrItem : LRItem<'nt, 't>, _) as input) =
             match lrItem.NextSymbol with
             | Some (Nonterminal nt) ->
-                pairedNonterms.[nt] |> Set.map (createItem input)
-                                    |> Set.unionMany
+                match Map.tryFind nt pairedNonterms with
+                | Some nts ->
+                    nts |> Set.map (createItem input)
+                        |> Set.unionMany
+                | None ->
+                    Set.empty
             | _ -> Set.empty
 
         SetHelpers.closure induction basis
