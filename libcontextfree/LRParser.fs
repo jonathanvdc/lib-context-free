@@ -16,6 +16,11 @@ module LRParser =
     | LRTerminal of 't
     | EndOfInput
 
+        override this.ToString() =
+            match this with
+            | LRTerminal t -> t.ToString()
+            | EndOfInput   -> "eof"
+
     type ParserState<'nt, 't> = 't list * (ParseTree<'nt, LRTerminal<'t>> * int) list
 
     /// Peeks a terminal from the given terminal list.
@@ -269,8 +274,7 @@ module LRParser =
     /// Defines a goto function for LR(0) items: all items in the specified set whose
     /// next symbol is the given label are taken, and their dot is shifted one position
     /// to the right.
-    let gotoLR0 (grammar : ContextFreeGrammar<'nt, 't>) (from : Set<LR0Item<'nt, 't>>) 
-                (label : Symbol<'nt, 't>) : Set<LR0Item<'nt, 't>> =
+    let gotoLR0 (from : Set<LR0Item<'nt, 't>>) (label : Symbol<'nt, 't>) : Set<LR0Item<'nt, 't>> =
         from |> SetHelpers.choose (fun (x, ()) -> Option.map (fun y -> x, y) x.NextSymbol)
              |> Set.filter (snd >> ((=) label))
              |> SetHelpers.choose (fun (x, _) -> x.NextItem)
@@ -315,3 +319,106 @@ module LRParser =
         grammar.V |> Seq.map (fun sym -> sym, first firstSyms sym)
                   |> Map.ofSeq
 
+    /// Creates an LR(k) parser, which is a triple of an action table, a goto table,
+    /// and an initial state. If this cannot be done, an error message is returned.
+    let createLR (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
+                 (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
+                 (follow : 'nt -> Set<'t>)
+                 (initialLookahead : LRItem<'nt, 't> -> 'a)
+                 (grammar : ContextFreeGrammar<'nt, 't>) =
+        let initState = grammar.P |> Set.filter (fun (ProductionRule(head, _)) -> head = grammar.S)
+                                  |> Set.map (fun (ProductionRule(head, body)) -> let item = LRItem(head, [], body) in item, initialLookahead item)
+        let stateMap = states closure goto initState |> SetHelpers.toIndexedMap
+        let actions = actionTable closure goto follow grammar.S stateMap
+        let gotos = gotoTable closure goto grammar.V stateMap
+        let initStateIndex = Map.find initState stateMap
+
+        Result.map (fun actionMap -> actionMap, gotos, initStateIndex) actions
+
+    /// Creates an LR(0) parser from the given grammar.
+    /// If this cannot be done, an error message is returned.
+    let createLR0 (grammar : ContextFreeGrammar<'nt, 't>) =
+        let closure = closureLR0 grammar
+        let follow _ = grammar.T
+        
+        createLR closure gotoLR0 follow ignore grammar
+
+    /// Converts the given parser, which has a
+    /// map-based action and goto table, to a parser
+    /// that uses a function-based action and goto table.
+    let toFunctionalParser (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : int) 
+                           : (int -> LRTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * int = 
+        getAction actionTable, (fun i nt -> Map.find (i, nt) gotoTable), startState
+
+    let private showTable (show : 'c -> string) (cellWidth : int) (rows : seq<'a>) (columns : seq<'b>) (table : Map<'a * 'b, 'c>) =
+        let actualWidth = cellWidth + 2
+        let rowCount = Seq.length rows
+        let horizSep = String.replicate (actualWidth * rowCount + rowCount + 1) "-"
+
+        let showCellContents text =
+            let text = " " + text
+            text + String.replicate (actualWidth - String.length text) " "
+
+        let getCellValue row column =
+            match Map.tryFind (row, column) table with
+            | Some x -> show x
+            | None   -> ""
+
+        let cells = rows |> Seq.map (fun r -> Seq.append (seq [showCellContents (r.ToString())]) (Seq.map (fun c -> getCellValue r c) columns))
+        let cells = Seq.append (seq [(columns |> Seq.map (fun c -> showCellContents(c.ToString())))]) cells
+
+        cells |> Seq.map (String.concat "|")
+              |> String.concat (System.Environment.NewLine + horizSep + System.Environment.NewLine)
+
+    /// Prints an LR parser triple.
+    let printLR (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : int)
+                : string =
+        let actionStates = actionTable |> Seq.map (fun (KeyValue((i, _), _)) -> i)
+                                       |> Set.ofSeq
+
+        let gotoStates = gotoTable |> Seq.map (fun (KeyValue((i, _), _)) -> i)
+                                   |> Set.ofSeq
+
+        let allStates = Set.union actionStates gotoStates
+        let allTerminals = actionTable |> Seq.map (fun (KeyValue((_, t), _)) -> t) 
+                                       |> Set.ofSeq
+        let allNonterminals = gotoTable |> Seq.map (fun (KeyValue((_, nt), _)) -> nt) 
+                                        |> Set.ofSeq
+
+        let termStrings = allTerminals |> Seq.map string
+        let nontermStrings = allNonterminals |> Seq.map (fun x -> x.ToString())
+
+        let getRule = function
+        | Reduce rule -> Some rule
+        | _           -> None
+
+        let allRules = actionTable |> Seq.choose (fun (KeyValue((_, _), a)) -> getRule a)
+                                   |> Set.ofSeq
+                                   |> SetHelpers.toIndexedMap
+
+        let printedRules = allRules |> Seq.sortBy (fun (KeyValue(_, i)) -> i)
+                                    |> Seq.map (fun (KeyValue(r, i)) -> sprintf "%d. %s" i (string r))
+                                    |> String.concat System.Environment.NewLine
+
+        let cellWidth = Seq.concat [termStrings |> Seq.map String.length; 
+                                    nontermStrings |> Seq.map String.length;
+                                    allRules |> Seq.map (fun (KeyValue(_, i)) -> String.length (string i) + 1);
+                                    allStates |> Seq.map (string >> String.length);
+                                    seq [ String.length "eof" ]]
+                        |> Seq.max
+
+        let showAction = function
+        | Shift state -> string state
+        | Reduce rule -> allRules |> Map.find rule
+                                  |> string
+                                  |> (+) "r"
+        | Accept      -> "acc"
+        | Fail        -> ""
+
+        let actionTable = showTable showAction cellWidth allStates allTerminals actionTable
+        let gotoTable = showTable string cellWidth allStates allNonterminals gotoTable
+
+        ["Rules:"; printedRules; 
+         "Action table:"; actionTable; 
+         "Goto table:"; gotoTable] 
+         |> String.concat System.Environment.NewLine

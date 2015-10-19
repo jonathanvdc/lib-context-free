@@ -63,6 +63,10 @@ let subprograms : Subprogram list =
           // TODO: PLEASE, IMPLEMENT ME
           Action = performReadWrite (fun _ -> Success PushdownAutomaton.ifElseAutomaton) writePdaGraphvizFile }
 
+        { Name = "lr0-table";
+          Doc = "Builds and prints an LR(0) table for the given input grammar.";
+          Action = maybePrintCFGProperty (LRParser.createLR0 >> Result.map LRParser.printLR) }
+
         // Insert additional subprograms here.
     ]
 
