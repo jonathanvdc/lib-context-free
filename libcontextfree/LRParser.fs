@@ -352,11 +352,17 @@ module LRParser =
         
         createLR closure gotoLR0 follow ignore grammar
 
+    type LRMapParser<'nt, 't when 'nt : comparison and 't : comparison> = 
+        Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * int
+
+    type LRFunctionalParser<'nt, 't> = 
+        (int -> LRTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * int
+
     /// Converts the given parser, which has a
     /// map-based action and goto table, to a parser
     /// that uses a function-based action and goto table.
     let toFunctionalParser (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : int) 
-                           : (int -> LRTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * int = 
+                           : LRFunctionalParser<'nt, 't> = 
         getAction actionTable, (fun i nt -> Map.find (i, nt) gotoTable), startState
 
     let private showTable (show : 'c -> string) (cellWidth : int) (rows : seq<'a>) (columns : seq<'b>) (table : Map<'a * 'b, 'c>) =
@@ -427,7 +433,8 @@ module LRParser =
         let actionTable = showTable showAction cellWidth allStates allTerminals actionTable
         let gotoTable = showTable string cellWidth allStates allNonterminals gotoTable
 
-        ["Rules:"; printedRules; "";
+        ["Start state: " + string startState;
+         "Rules:"; printedRules; "";
          "Action table:"; actionTable; "";
          "Goto table:"; gotoTable] 
          |> String.concat System.Environment.NewLine

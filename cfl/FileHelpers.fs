@@ -118,6 +118,18 @@ let rec readStdinToEnd() : char list =
     | -1 -> [] // This indicates either Ctrl-Z or the end of the input file.
     | c  -> char c :: readStdinToEnd()
 
+/// Reads standard input to completion as a list of characters,
+/// then trims trailing newlines.
+let readStdinToTrimmedEnd() : char list =
+    let folder (c : char) (isEnd : bool, result : char list) =
+        if isEnd && (c = '\n' || c = '\r') then
+            true, result
+        else
+            false, c :: result
+
+    let rawInput = readStdinToEnd() 
+    List.foldBack folder rawInput (true, []) |> snd
+
 let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (emptyResult : Result<unit>) (values : seq<'a>) : Result<unit> =
     let values = Seq.cache values
     if values |> Seq.isEmpty then
@@ -136,15 +148,16 @@ let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (empt
                    |> Result.sequence
                    |> Result.map ignore
 
-let performEarleyParse (argv : string list) =
+let performParse (parse : ContextFreeGrammar<char, char> -> char list -> Result<#seq<ParseTree<char, char>>>) (argv : string list) =
     match argv with
     | [grammarPath; outputPath] ->
         match readContextFreeGrammarFile grammarPath with
         | Success grammar ->
-            let inputString = readStdinToEnd()
-            inputString |> EarleyParser.parse grammar
-                        |> Seq.map (ParseTree.map string string)
-                        |> writeAll writeParseTreeFile outputPath (Error "The given string does not belong to the given grammar.")
+            let inputString = readStdinToTrimmedEnd()
+            inputString |> parse grammar
+                        |> Result.map (Seq.map (ParseTree.map string string))
+                        |> Result.map (writeAll writeParseTreeFile outputPath (Error "The given string does not belong to the given grammar."))
+                        |> Result.map Result.eprintf
                         |> Result.eprintf
         | Error e ->
             eprint e
@@ -152,3 +165,23 @@ let performEarleyParse (argv : string list) =
         eprint "The specified subprogram takes exactly two arguments: \
                 the file name of the context-free grammar file, and the \
                 output path pattern."
+
+let performEarleyParse = 
+    let parseEarley grammar input = 
+        Result.Success (EarleyParser.parse grammar input)
+
+    performParse parseEarley
+
+let performLRParse (createParser : ContextFreeGrammar<char, char> -> Result<LRParser.LRMapParser<char, char>>) =
+    let parseLR (grammar : ContextFreeGrammar<char, char>)
+                (input : char list) =
+        let processResult = function
+        | Choice1Of2 tree -> [tree]
+        | Choice2Of2 _    -> []
+
+        createParser grammar |> Result.map LRParser.toFunctionalParser  
+                             |> Result.map ((<|||) LRParser.parse)
+                             |> Result.map ((|>) input)
+                             |> Result.map processResult
+
+    performParse parseLR
