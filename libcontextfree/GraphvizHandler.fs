@@ -148,7 +148,7 @@ module GraphvizHandler =
                     let g' = if List.isEmpty g then "ε" else String.concat "" g
                     sprintf "%s, %s / %s" a' Y g'
 
-                { Label = String.concat "\n" (Seq.map labelLine paths);
+                { Label = StringHelpers.concatLines (Seq.map labelLine paths);
                   Directed = true;
                   Target = makeNode qTarget }
 

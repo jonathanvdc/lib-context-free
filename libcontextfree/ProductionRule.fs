@@ -25,4 +25,4 @@ module ProductionRules =
     /// Shows the given sequence of production rules as a numbered list.
     let show (rules : seq<ProductionRule<'nt, 't>>) =
         rules |> Seq.mapi (fun index item -> string (index + 1) + ". " + string item)
-              |> String.concat (System.Environment.NewLine)
+              |> StringHelpers.concatLines

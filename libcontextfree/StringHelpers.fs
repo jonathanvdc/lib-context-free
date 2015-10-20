@@ -2,6 +2,10 @@
 
 /// Defines a number of string helper functions.
 module StringHelpers =
+    /// Concatenate a list of strings using newlines.
+    let concatLines : seq<string> -> string =
+        String.concat System.Environment.NewLine
+
     /// Escape a string for output in a Graphviz .dot file.
     let dotEscape : string -> string =
         let shouldEscape (c : char) : bool =

@@ -118,11 +118,11 @@ module ContextFreeGrammar =
 
     /// Show the nonterminals of a given context-free grammar as a new-line seperated list.
     let showNonterminals (grammar : ContextFreeGrammar<char, char>) : string =
-        Seq.map string grammar.V |> String.concat (System.Environment.NewLine)
+        Seq.map string grammar.V |> StringHelpers.concatLines
 
     /// Show the terminals of a given context-free grammar as a new-line seperated list.
     let showTerminals (grammar : ContextFreeGrammar<char, char>) : string =
-        Seq.map string grammar.T |> String.concat (System.Environment.NewLine)
+        Seq.map string grammar.T |> StringHelpers.concatLines
 
     /// Show the rules of a given context-free grammar as a new-line seperated list.
     let showRules (grammar : ContextFreeGrammar<char, char>) : string =
