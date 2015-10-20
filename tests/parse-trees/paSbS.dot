@@ -1,0 +1,6 @@
+digraph PDA {
+    node0 [label="start" shape=none];
+    node1 [label="q0" shape=circle];
+    node1 -> node1 [label="b, b / &#949;\na, a / &#949;\n&#949;, S / aSbS"];
+    node0 -> node1 [label=""];
+}
