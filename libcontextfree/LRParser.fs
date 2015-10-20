@@ -284,14 +284,17 @@ module LRParser =
                     results <- Map.add (stateIndex, nt) nextStateIndex results
         results
 
-    /// Defines a goto function for LR(0) items: all items in the specified set whose
+    /// Defines a goto function for LR(k) items: all items in the specified set whose
     /// next symbol is the given label are taken, and their dot is shifted one position
     /// to the right.
-    let gotoLR0 (from : Set<LR0Item<'nt, 't>>) (label : Symbol<'nt, 't>) : Set<LR0Item<'nt, 't>> =
-        from |> SetHelpers.choose (fun (x, ()) -> Option.map (fun y -> x, y) x.NextSymbol)
+    let goto (from : Set<LRItem<'nt, 't> * 'a>) 
+             (label : Symbol<'nt, 't>) 
+             : Set<LRItem<'nt, 't> * 'a> =
+        let snd (_, x, _) = x
+
+        from |> SetHelpers.choose (fun (x, l) -> Option.map (fun y -> x, y, l) x.NextSymbol)
              |> Set.filter (snd >> ((=) label))
-             |> SetHelpers.choose (fun (x, _) -> x.NextItem)
-             |> Set.map (fun x -> x, ())
+             |> SetHelpers.choose (fun (x, _, l) -> Option.map (fun x -> x, l) x.NextItem)
 
     /// A specialization of the closure function for LR(0) items.
     let closureLR0 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LR0Item<'nt, 't>>) =
@@ -348,13 +351,13 @@ module LRParser =
 
         Result.map (fun actionMap -> actionMap, gotos, (grammar.S, initStateIndex)) actions
 
-    /// Creates an LR(0) parser from the given grammar.
+    /// Creates an SLR LR(0) parser from the given grammar.
     /// If this cannot be done, an error message is returned.
     let createLR0 (grammar : ContextFreeGrammar<'nt, 't>) =
         let closure = closureLR0 grammar
         let follow _ = grammar.T
         
-        createLR closure gotoLR0 follow ignore grammar
+        createLR closure goto follow ignore grammar
 
     type LRMapParser<'nt, 't when 'nt : comparison and 't : comparison> = 
         Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * ('nt * int)
