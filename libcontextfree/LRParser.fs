@@ -298,7 +298,7 @@ module LRParser =
 
     /// A specialization of the closure function for LR(0) items.
     let closureLR0 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LR0Item<'nt, 't>>) =
-        let createItem (oldItem, _) = function
+        let createItem (_, _) = function
         | ProductionRule(head, body) -> Set.singleton (LRItem(head, [], body), ())
 
         closure createItem grammar basis
@@ -334,6 +334,21 @@ module LRParser =
 
         grammar.V |> Seq.map (fun sym -> sym, first firstSyms sym)
                   |> Map.ofSeq
+
+    /// A specialization of the closure function for LR(1) items.
+    let closureLR1 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 't>) =
+        let firstMap = firstSets grammar
+
+        let createItem (oldItem : LRItem<'nt, 't>, oldLookahead : 't) = function
+        | ProductionRule(head, body) -> 
+            let newLookahead = 
+                match oldItem.NextSymbol with
+                | Some (Terminal t) -> Set.singleton t
+                | Some (Nonterminal nt) -> Map.find nt firstMap
+                | None -> Set.singleton oldLookahead
+            newLookahead |> Set.map (fun l -> LRItem(head, [], body), l)
+
+        closure createItem grammar basis
 
     /// Creates an LR(k) parser, which is a triple of an action table, a goto table,
     /// and an initial state. If this cannot be done, an error message is returned.
