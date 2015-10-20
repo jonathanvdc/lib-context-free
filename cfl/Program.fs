@@ -78,6 +78,14 @@ let subprograms : Subprogram list =
           Doc = "Performs an LR(0) parse.";
           Action = performLRParse LRParser.createLR0 }
 
+        { Name = "lr1-table";
+          Doc = "Builds and prints an LR(1) table for the given input grammar.";
+          Action = maybePrintCfgProperty (LRParser.createLR1 >> Result.map LRParser.printLR) }
+
+        { Name = "lr1-parse";
+          Doc = "Performs an LR(1) parse.";
+          Action = performLRParse LRParser.createLR1 }
+
         // Insert additional subprograms here.
     ]
 

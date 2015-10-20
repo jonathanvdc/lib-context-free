@@ -210,7 +210,7 @@ module LRParser =
     /// the grammar's starting symbol, and the set of states.
     let actionTable (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
                     (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
-                    (follow : 'nt -> Set<'t>)
+                    (follow : 'a -> Set<LRTerminal<'t>>)
                     (startSymbol : 'nt)
                     (states : Map<Set<LRItem<'nt, 't> * 'a>, int>)
                     : Result<Map<int * LRTerminal<'t>, LRAction<'nt, 't>>> =
@@ -226,7 +226,11 @@ module LRParser =
                         let key = stateIndex, LRTerminal t
                         match Map.tryFind key dict with
                         | None -> Success (Map.add key (Shift toIndex) dict)
+                        | Some (Shift shiftTarget) when shiftTarget = toIndex -> Success dict
                         | Some (Reduce reduceTarget) -> Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string reduceTarget))
+                        | Some (Shift shiftTarget) ->
+                            let otherState = Map.findKey (fun key value -> value = shiftTarget) states
+                            Error (sprintf "Shift/shift conflict: %A and %A." (state |> Set.map (fst >> string) |> Set.toList) (otherState |> Set.map (fst >> string) |> Set.toList))
                         | Some _ -> Error (sprintf "Shift conflict: %A." (state |> Set.map (fst >> string) |> Set.toList))
                     results <- Result.bind addShift results
                 | None ->
@@ -234,6 +238,7 @@ module LRParser =
                         let key = stateIndex, symbol
                         match Map.tryFind key dict with
                         | None -> Success (Map.add key (Reduce item.Rule) dict)
+                        | Some (Reduce reduceTarget) when reduceTarget = item.Rule -> Success dict
                         | Some (Reduce reduceTarget) -> 
                             Error (sprintf "Reduce/reduce conflict: %s and %s." (string item.Rule) (string reduceTarget))
                         | Some (Shift shiftTarget) -> 
@@ -245,14 +250,11 @@ module LRParser =
                             Error "Unexpected reduce conflict. Fascinating."
 
                     // Try to reduce.
-                    for t in follow item.Head do
-                        results <- Result.bind (addReduce (LRTerminal t)) results
+                    for t in follow lookahead do
+                        results <- Result.bind (addReduce t) results
                     if item.Head = startSymbol then
                         // Starting symbol. Our work here is done.
                         results <- Result.map (Map.add (stateIndex, EndOfInput) Accept) results
-                    else
-                        // Don't forget to insert a reduce action into the eof column.
-                        results <- Result.bind (addReduce EndOfInput) results
                 | _ -> 
                     // Nothing to do here, really.
                     ()
@@ -336,19 +338,20 @@ module LRParser =
                   |> Map.ofSeq
 
     /// A specialization of the closure function for LR(1) items.
-    let closureLR1 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 't>) =
+    let closureLR1 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * LRTerminal<'t>>) =
         let firstMap = firstSets grammar
 
-        let createItem (oldItem : LRItem<'nt, 't>, oldLookahead : 't) = function
+        let createItem (oldItem : LRItem<'nt, 't>, oldLookahead : LRTerminal<'t>) = function
         | ProductionRule(head, body) -> 
             let newLookahead = 
                 match oldItem.NextSymbol with
-                | Some (Terminal t) -> Set.singleton t
+                | Some (Terminal t) -> Set.singleton (LRTerminal t)
                 | Some (Nonterminal nt) -> 
                     match Map.tryFind nt firstMap with
-                    | Some results -> results
+                    | Some results -> results |> Set.map LRTerminal
                     | None -> Set.empty
-                | None -> Set.singleton oldLookahead
+                | None -> 
+                    Set.singleton oldLookahead
             newLookahead |> Set.map (fun l -> LRItem(head, [], body), l)
 
         closure createItem grammar basis
@@ -357,11 +360,11 @@ module LRParser =
     /// and an initial state. If this cannot be done, an error message is returned.
     let createLR (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
                  (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
-                 (follow : 'nt -> Set<'t>)
-                 (initialLookahead : LRItem<'nt, 't> -> 'a)
+                 (follow : 'a -> Set<LRTerminal<'t>>)
+                 (initialLookahead : 'a)
                  (grammar : ContextFreeGrammar<'nt, 't>) =
         let initState = grammar.P |> Set.filter (fun (ProductionRule(head, _)) -> head = grammar.S)
-                                  |> Set.map (fun (ProductionRule(head, body)) -> let item = LRItem(head, [], body) in item, initialLookahead item)
+                                  |> Set.map (fun (ProductionRule(head, body)) -> let item = LRItem(head, [], body) in item, initialLookahead)
         let stateMap = states closure goto initState |> SetHelpers.toIndexedMap
         let actions = actionTable closure goto follow grammar.S stateMap
         let gotos = gotoTable closure goto grammar.V stateMap
@@ -369,13 +372,22 @@ module LRParser =
 
         Result.map (fun actionMap -> actionMap, gotos, (grammar.S, initStateIndex)) actions
 
-    /// Creates an SLR LR(0) parser from the given grammar.
+    /// Creates an LR(0) parser from the given grammar.
     /// If this cannot be done, an error message is returned.
     let createLR0 (grammar : ContextFreeGrammar<'nt, 't>) =
         let closure = closureLR0 grammar
-        let follow _ = grammar.T
+        let follow () = grammar.T |> Set.map LRTerminal
+                                  |> Set.add EndOfInput
         
-        createLR closure goto follow ignore grammar
+        createLR closure goto follow () grammar
+
+    /// Creates an LR(1) parser from the given grammar.
+    /// If this cannot be done, an error message is returned.
+    let createLR1 (grammar : ContextFreeGrammar<'nt, 't>) =
+        let closure = closureLR1 grammar
+        let follow l = Set.singleton l
+        
+        createLR closure goto follow EndOfInput grammar
 
     type LRMapParser<'nt, 't when 'nt : comparison and 't : comparison> = 
         Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * ('nt * int)
