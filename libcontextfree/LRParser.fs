@@ -344,7 +344,10 @@ module LRParser =
             let newLookahead = 
                 match oldItem.NextSymbol with
                 | Some (Terminal t) -> Set.singleton t
-                | Some (Nonterminal nt) -> Map.find nt firstMap
+                | Some (Nonterminal nt) -> 
+                    match Map.tryFind nt firstMap with
+                    | Some results -> results
+                    | None -> Set.empty
                 | None -> Set.singleton oldLookahead
             newLookahead |> Set.map (fun l -> LRItem(head, [], body), l)
 
