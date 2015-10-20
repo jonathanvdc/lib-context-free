@@ -161,7 +161,27 @@ let readStdinToTrimmedEnd() : char list =
     let rawInput = readStdinToEnd() 
     List.foldBack folder rawInput (true, []) |> snd
 
-let writeAll (write : string -> 'a -> Result<unit>) (pathPattern : string) (emptyResult : Result<unit>) (values : seq<'a>) : Result<unit> =
+/// Applies a 'write' function that writes data to files specified by their 
+/// paths to the given sequence of values.
+/// The path names are generated based on a path pattern, which is used 
+/// verbatim as the output path if exactly one value is given.
+/// Otherwise, an integer is appended at the end of the path pattern's file
+/// name for every value.
+/// If the given sequence of values is empty, the given empty result value is returned
+/// instead.
+/// 
+/// For example, given a 'write' function with signature `string -> int -> Result<unit>`,
+/// and some result 'emptyResult':
+///
+///     writeAll write emptyResult "output.txt" Seq.empty
+///     = emptyResult
+///
+///     writeAll write emptyResult "output.txt" [1]
+///     = write "output.txt" 1
+///
+///     writeAll write emptyResult "output.txt" [1; 5]
+///     = Result.map ignore (Result.sequence [write "output0.txt" 1; write "output1.txt" 5])
+let writeAll (write : string -> 'a -> Result<unit>) (emptyResult : Result<unit>) (pathPattern : string) (values : seq<'a>) : Result<unit> =
     let values = Seq.cache values
     if values |> Seq.isEmpty then
         emptyResult
@@ -187,7 +207,7 @@ let performParse (parse : ContextFreeGrammar<char, char> -> char list -> Result<
             let inputString = readStdinToTrimmedEnd()
             inputString |> parse grammar
                         |> Result.map (Seq.map (ParseTree.map string string))
-                        |> Result.map (writeAll writeParseTreeFile outputPath (Error "The given string does not belong to the given grammar."))
+                        |> Result.map (writeAll writeParseTreeFile (Error "The given string does not belong to the given grammar.") outputPath)
                         |> Result.map Result.eprintf
                         |> Result.eprintf
         | Error e ->
