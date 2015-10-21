@@ -172,7 +172,7 @@ module ChomskyNormalForm =
                 // Yield the head of the given rule if we can induce it to be nullable.
                 let inducedNullableFromRule : BinRule<'nt, 't> -> 'nt option =
                     function
-                    | BBinaryRule(h, (x, y)) when isNullable x && isNullable y -> Some h
+                    | BBinaryRule(h, (x, y)) when isNullable x && isNullable y ->  h
                     | BUnitRule(Some h, x) when isNullable x -> Some h
                     | _ -> None
 
@@ -226,10 +226,46 @@ module ChomskyNormalForm =
             let P' = Set.unionMany (Set.map convertRule P)
             ChomskyNormalCfg P'
 
+    /// Convert the given context-free grammar to Chomsky normal form.
     let chomskyNormalForm<'nt, 't when 'nt : comparison and 't : comparison>
             : ContextFreeGrammar<'nt, 't> -> ChomskyNormalCfg<Symbol<'nt, 't> * int, 't> =
         startStep >> termStep >> binStep >> delStep >> unitStep
 
+    /// Return a set of all nonterminals in the given Chomsky-normal context-free grammar.
+    let cnfNonterminals : ChomskyNormalCfg<'nt, 't> -> 'nt option Set = 
+        function
+        | ChomskyNormalCfg rules ->
+            let ruleNonTerminals : ChomskyNormalRule<'nt,'t> -> 'nt option Set =
+                function
+                | BinaryRule (A, (B, C)) -> set [A; Some B; Some C]
+                | TerminalRule (A , _)   -> set [A]
+                | StartToEpsilon         -> set [None]        
+            
+            Set.map ruleNonTerminals rules |> Set.unionMany 
+        
+    /// Return a set of all unit productions in the given Chomsky-normal context-free grammar.
+    let cnfUnitProductions : ChomskyNormalCfg<'nt,'t> -> Set<'nt option * 't> =
+        function
+        | ChomskyNormalCfg rules ->
+            let getUnitProduction =
+                function
+                | TerminalRule (A, a) -> Some(A, a)
+                | _ -> None
+
+            SetHelpers.choose getUnitProduction rules
+
+    /// Return a set of all binary productions in the given Chomsky-normal context-free grammar.
+    let cnfBinaryProductions : ChomskyNormalCfg<'nt,'t> -> Set<'nt option * ('nt * 'nt)> =
+        function
+        | ChomskyNormalCfg rules ->
+            let getBinaryProduction =
+                function
+                | BinaryRule (A, (B, C)) -> Some(A, (B, C))
+                | _ -> None
+
+            SetHelpers.choose getBinaryProduction rules
+            
+    /// An example CNF grammar from the slides on the CYK algorithm.
     let p150Example : ChomskyNormalCfg<char, char> =
         ChomskyNormalCfg <|
             set [
