@@ -458,7 +458,7 @@ module LRParser =
     let private showTable (show : 'c -> string) (cellWidth : int) (rows : seq<'a>) (columns : seq<'b>) (table : Map<'a * 'b, 'c>) =
         let actualWidth = cellWidth + 2
         let colCount = Seq.length columns
-        let horizSep = String.replicate ((actualWidth + 1) * (colCount + 1) - 1) "-"
+        let horizSep = List.replicate (colCount + 1) (String.replicate actualWidth "-") |> String.concat "+"
 
         let showCellContents text =
             let text = " " + text
