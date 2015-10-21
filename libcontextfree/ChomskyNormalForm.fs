@@ -48,9 +48,9 @@ module ChomskyNormalForm =
 
     /// A production rule, after the BIN step in the CNF conversion.
     type BinRule<'nt, 't> =
-    | BBinaryRule of 'nt * ('nt * 'nt)
+    | BBinaryRule of 'nt option * ('nt * 'nt)
     | BUnitRule of 'nt option * 'nt
-    | BTerminalRule of 'nt * 't
+    | BTerminalRule of 'nt option * 't
     | BEpsilonRule of 'nt option
 
     /// A context-free grammar, after the BIN step in the CNF conversion.
@@ -59,9 +59,9 @@ module ChomskyNormalForm =
 
     /// A production rule, after the DEL step in the CNF conversion.
     type DelRule<'nt, 't> =
-    | DBinaryRule of 'nt * ('nt * 'nt)
+    | DBinaryRule of 'nt option * ('nt * 'nt)
     | DUnitRule of 'nt option * 'nt
-    | DTerminalRule of 'nt * 't
+    | DTerminalRule of 'nt option * 't
     | DStartToEpsilon
 
     /// A context-free grammar, after the DEL step in the CNF conversion.
@@ -127,8 +127,8 @@ module ChomskyNormalForm =
                         function
                         | []      -> Set.singleton <| BEpsilonRule (Some (H,0))
                         | [X]     -> Set.singleton <| BUnitRule (Some (H,i), (X,0))
-                        | [X; Y]  -> Set.singleton <| BBinaryRule ((H,i), ((X,0), (Y,0)))
-                        | X :: Xs -> Set.add (BBinaryRule ((H,i), ((X,0), (H,i+1)))) (toBin (i+1) Xs)
+                        | [X; Y]  -> Set.singleton <| BBinaryRule (Some (H,i), ((X,0), (Y,0)))
+                        | X :: Xs -> Set.add (BBinaryRule (Some (H,i), ((X,0), (H,i+1)))) (toBin (i+1) Xs)
                     toBin 0 body
 
                 | TNonterminalRule(None, [S]) ->
@@ -137,7 +137,7 @@ module ChomskyNormalForm =
 
                 | TTerminalRule(H, t) ->
                     // H → t
-                    Set.singleton (BTerminalRule((H, 0), t))
+                    Set.singleton (BTerminalRule(Some (H, 0), t))
 
                 | TNonterminalRule(None, _) ->
                     // We shouldn't have ever created a rule like this: S0 → S is
@@ -196,8 +196,8 @@ module ChomskyNormalForm =
                 function
                 | BBinaryRule(h, (x, y)) ->
                     Set.singleton (DBinaryRule (h, (x, y)))
-                    |> if isNullable x then Set.add (DUnitRule (Some h, y)) else id
-                    |> if isNullable y then Set.add (DUnitRule (Some h, x)) else id
+                    |> if isNullable x then Set.add (DUnitRule (h, y)) else id
+                    |> if isNullable y then Set.add (DUnitRule (h, x)) else id
                 | BEpsilonRule None   -> Set.singleton DStartToEpsilon
                 | BEpsilonRule _      -> Set.empty
                 | BTerminalRule(x, y) -> Set.singleton (DTerminalRule(x, y))
@@ -208,25 +208,37 @@ module ChomskyNormalForm =
 
     /// Step five in the CNF transformation: delete unit rules.
     let unitStep : DelCfg<'nt, 't> -> ChomskyNormalCfg<'nt, 't> =
-        (fun x -> raise (new System.NotImplementedException()))
-        // function
-        // | DelCfg P ->
-        //     let rulesFrom (H : 'nt) =
-        //         P |> Set.filter (function | DUnitRule(Some h, _) -> H = h
-        //                                   | DBinaryRule(h, _)    -> H = h
-        //                                   | DTerminalRule(h, _)  -> H = h
-        //                                   | _                    -> false)
-        //         
-        //     let rec convertRule : DelRule<'nt, 't> -> Set<ChomskyNormalRule<'nt, 't>> =
-        //         function
-        //         | DUnitRule(h, x)        -> Set.unionMany (Set.map convertRule (rulesFrom x))
-        //         | DBinaryRule(h, (x, y)) -> Set.singleton (BinaryRule(h, (x, y)))
-        //         | DTerminalRule(h, t)    -> Set.singleton (TerminalRule(h, t))
-        //         | DStartToEpsilon        -> Set.singleton (StartToEpsilon)
-        // 
-        //     let P' = Set.unionMany (Set.map convertRule P)
-        //     ChomskyNormalCfg P'
+        function
+        | DelCfg P ->
+            let rulesFrom (H : 'nt) =
+                P |> Set.filter (function | DUnitRule(Some h, _)      -> H = h
+                                          | DBinaryRule(Some h, _)    -> H = h
+                                          | DTerminalRule(Some h, _)  -> H = h
+                                          | _                         -> false)
+                
+            let rec convertRule : DelRule<'nt, 't> -> Set<ChomskyNormalRule<'nt, 't>> =
+                function
+                | DUnitRule(h, x)        -> Set.unionMany (Set.map convertRule (rulesFrom x))
+                | DBinaryRule(h, (x, y)) -> Set.singleton (BinaryRule(h, (x, y)))
+                | DTerminalRule(h, t)    -> Set.singleton (TerminalRule(h, t))
+                | DStartToEpsilon        -> Set.singleton (StartToEpsilon)
+        
+            let P' = Set.unionMany (Set.map convertRule P)
+            ChomskyNormalCfg P'
 
     let chomskyNormalForm<'nt, 't when 'nt : comparison and 't : comparison>
             : ContextFreeGrammar<'nt, 't> -> ChomskyNormalCfg<Symbol<'nt, 't> * int, 't> =
         startStep >> termStep >> binStep >> delStep >> unitStep
+
+    let p150Example : ChomskyNormalCfg<char, char> =
+        ChomskyNormalCfg <|
+            set [
+                BinaryRule (None,     ('A', 'B'));
+                BinaryRule (None,     ('B', 'C'));
+                BinaryRule (Some 'A', ('B', 'A'));
+                BinaryRule (Some 'B', ('C', 'C'));
+                BinaryRule (Some 'C', ('A', 'B'));
+                TerminalRule (Some 'A', 'a');
+                TerminalRule (Some 'B', 'b');
+                TerminalRule (Some 'C', 'a');
+            ]
