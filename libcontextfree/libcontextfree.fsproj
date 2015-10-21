@@ -61,12 +61,12 @@
     <Compile Include="ContextFreeGrammar.fs" />
     <Compile Include="ChomskyNormalForm.fs" />
     <Compile Include="PushDownAutomaton.fs" />
+    <Compile Include="EarleyParser.fs" />
+    <Compile Include="LRParser.fs" />
     <Compile Include="IOHelpers.fs" />
     <Compile Include="TreeHandler.fs" />
     <Compile Include="GraphvizHandler.fs" />
     <Compile Include="XmlHandler.fs" />
-    <Compile Include="EarleyParser.fs" />
-    <Compile Include="LRParser.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>
