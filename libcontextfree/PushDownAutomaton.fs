@@ -218,8 +218,13 @@ module PushdownAutomaton =
                     for t in T do
                         yield ((q, Some t, Terminal t), Set.singleton (q, []))
                 }
-                // δ is their union.
-                Map.ofSeq (Seq.append δ1 δ2)
+
+                // Now `Seq.append δ1 δ2` is a sequence of (K, set<V>) tuples: we
+                // wish to group them by K and take the union of all sets. This
+                // result is δ, our final map.
+                Seq.append δ1 δ2
+                    |> MapHelpers.groupFst
+                    |> Map.map (fun k t -> Set.unionMany t)
 
             PushdownAutomaton (δ, q, Nonterminal S, Set.empty)
     

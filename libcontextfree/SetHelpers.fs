@@ -30,8 +30,8 @@ module SetHelpers =
     let closure (induction : 'a -> Set<'a>) (basis : Set<'a>) : Set<'a> =
         closure2 (fun _ -> induction) basis
 
-    /// Converts the given set to a map where every
+    /// Converts the given sequence to a map where every
     /// item in the set has been assigned a unique index.
-    let toIndexedMap (items : Set<'a>) : Map<'a, int> =
+    let toIndexedMap (items : seq<'a>) : Map<'a, int> =
         items |> Seq.mapi (fun i x -> x, i)
               |> Map.ofSeq
