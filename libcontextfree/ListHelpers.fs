@@ -99,3 +99,8 @@ module ListHelpers =
         | (x :: xs), (y :: ys), (z :: zs) ->
             (x, y, z) :: zip3Truncate xs ys zs
         | _ -> []
+
+    /// Computes all suffixes of the given list.
+    let rec suffixes : 'x list -> ('x * 'x list) list = function
+    | x :: xs -> (x, xs) :: suffixes xs
+    | [] -> []

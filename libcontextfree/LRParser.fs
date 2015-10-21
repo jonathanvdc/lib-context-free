@@ -167,7 +167,7 @@ module LRParser =
     /// In this closure implementation, a context-free grammar and an item-creating function are passes as arguments:
     /// said function takes an old item and a rule for the next item, and uses them to generate a 
     /// set of new items.
-    let rec closure (createItem : LRItem<'nt, 't> * 'a -> ProductionRule<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>) 
+    let rec closure (getLookahead : Set<LRItem<'nt, 't>> -> LRItem<'nt, 't> -> Set<'a>) 
                     (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * 'a>)
                     : Set<LRItem<'nt, 't> * 'a> = 
         let groupRules : ProductionRule<'nt, 't> -> 'nt * ProductionRule<'nt, 't> = function
@@ -176,18 +176,27 @@ module LRParser =
         let groupedRules = grammar.P |> Seq.map groupRules
                                      |> MapHelpers.groupFstSet
 
-        let induction ((lrItem : LRItem<'nt, 't>, _) as input) =
+        let induction (lrItem : LRItem<'nt, 't>) =
             match lrItem.NextSymbol with
             | Some (Nonterminal nt) ->
                 match Map.tryFind nt groupedRules with
                 | Some nts ->
-                    nts |> Set.map (createItem input)
-                        |> Set.unionMany
+                    nts |> Set.map (fun (ProductionRule(head, body)) -> LRItem(head, [], body))
                 | None ->
                     Set.empty
             | _ -> Set.empty
 
-        SetHelpers.closure induction basis
+        let lookaheadMap = MapHelpers.groupFstSet basis
+        let setClosure = basis |> Set.map fst 
+                               |> SetHelpers.closure induction 
+
+        let getOrDefault def = function
+        | Some x -> x
+        | None   -> def
+
+        setClosure |> Set.map (fun x -> getLookahead setClosure x |> Set.union (Map.tryFind x lookaheadMap |> getOrDefault Set.empty) 
+                                                                  |> Set.map (fun l -> x, l))
+                   |> Set.unionMany
 
     /// Computes the set of states, given a closure and goto function and 
     /// an initial item.
@@ -300,61 +309,37 @@ module LRParser =
 
     /// A specialization of the closure function for LR(0) items.
     let closureLR0 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LR0Item<'nt, 't>>) =
-        let createItem (_, _) = function
-        | ProductionRule(head, body) -> Set.singleton (LRItem(head, [], body), ())
+        let getLookahead _ _ = Set.singleton ()
 
-        closure createItem grammar basis
+        closure getLookahead grammar basis
 
-    /// Computes the FIRST set for the given first symbol map and nonterminal.
-    /// FIRST(A) is the set of terminals which can appear as the first element
-    /// of any chain of rules matching nonterminal A.
+    /// Given the precomputed map of FIRST sets, computes FOLLOW(k, B), where 
+    /// k is a set of LR items, and B is a nonterminal.
     ///
-    /// The given map associates every nonterminal with
-    /// all first symbols that occur in rules that have said 
-    /// nonterminal on their left-hand side.
+    /// FOLLOW(I) of an Item I [A → α • B β, x] is the set of terminals that can appear 
+    /// immediately after nonterminal B, where α, β are arbitrary symbol strings, 
+    /// and x is an arbitrary lookahead terminal.
     ///
-    /// FIRST(A) is used when building LR(1) tables.
-    let first (firstSymbols : Map<'nt, Set<Symbol<'nt, 't>>>) (sym : 'nt) : Set<'t> =
-        let induction : Symbol<'nt, 't> -> Set<Symbol<'nt, 't>> = function
-        | Nonterminal sym -> firstSymbols.[sym]
-        | Terminal    _   -> Set.empty
-
-        Nonterminal sym |> Set.singleton 
-                        |> SetHelpers.closure induction
-                        |> Symbol.terminals
-                        |> Set.ofSeq
-
-    /// Computes a map that maps every nonterminal A in the given grammar
-    /// to their FIRST(A) set.
-    let firstSets (grammar : ContextFreeGrammar<'nt, 't>) : Map<'nt, Set<'t>> =
-        let getFirstSymbol : ProductionRule<'nt, 't> -> ('nt * Symbol<'nt, 't>) option = function
-        | ProductionRule(lhs, sym :: _) -> Some (lhs, sym)
-        | _ -> None
-
-        let firstSyms = grammar.P |> Seq.choose getFirstSymbol
-                                  |> MapHelpers.groupFstSet
-
-        grammar.V |> Seq.map (fun sym -> sym, first firstSyms sym)
-                  |> Map.ofSeq
+    /// FOLLOW(k, B) of an item set k and a nonterminal B is the union of the 
+    /// follow sets of all items in k where '•' is followed by B.
+    let follow (followMap : Map<'nt, Set<LRTerminal<'t>>>) (k : Set<LRItem<'nt, 't>>) (B : 'nt) : Set<LRTerminal<'t>> =
+        let mapping = function
+        | LRItem(_, _, Nonterminal nt :: _) when nt = B -> 
+            Map.find B followMap
+        | _ -> 
+            Set.empty
+        
+        k |> Set.map mapping
+          |> Set.unionMany
 
     /// A specialization of the closure function for LR(1) items.
-    let closureLR1 (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * LRTerminal<'t>>) =
-        let firstMap = firstSets grammar
+    let closureLR1 (firstMap : Map<'nt, Set<'t option>>) (followMap : Map<'nt, Set<LRTerminal<'t>>>) (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * LRTerminal<'t>>) =
+        let getLookahead (closureSet : Set<LRItem<'nt, 't>>) =
+            let getFollowers = FunctionHelpers.memoize (follow followMap closureSet)
+            fun (item : LRItem<'nt, 't>) -> 
+                getFollowers item.Head
 
-        let createItem (oldItem : LRItem<'nt, 't>, oldLookahead : LRTerminal<'t>) = function
-        | ProductionRule(head, body) -> 
-            let newLookahead = 
-                match oldItem.NextSymbol with
-                | Some (Terminal t) -> Set.singleton (LRTerminal t)
-                | Some (Nonterminal nt) -> 
-                    match Map.tryFind nt firstMap with
-                    | Some results -> results |> Set.map LRTerminal
-                    | None -> Set.empty
-                | None -> 
-                    Set.singleton oldLookahead
-            newLookahead |> Set.map (fun l -> LRItem(head, [], body), l)
-
-        closure createItem grammar basis
+        closure getLookahead grammar basis
 
     /// Creates an LR(k) parser, which is a triple of an action table, a goto table,
     /// and an initial state. If this cannot be done, an error message is returned.
@@ -376,18 +361,80 @@ module LRParser =
     /// If this cannot be done, an error message is returned.
     let createLR0 (grammar : ContextFreeGrammar<'nt, 't>) =
         let closure = closureLR0 grammar
-        let follow () = grammar.T |> Set.map LRTerminal
-                                  |> Set.add EndOfInput
+        let follow _ = grammar.T |> Set.map LRTerminal
+                                 |> Set.add EndOfInput
         
         createLR closure goto follow () grammar
+
+    /// Computes the FIRST set for the given terminal/nonterminal string.
+    let rec first (firstMap : Map<'nt, Set<'t option>>) : Symbol<'nt, 't> list -> Set<'t option> = function
+    | Terminal a :: _ -> Set.singleton (Some a)
+    | [] -> Set.singleton None
+    | Nonterminal A :: rest ->
+        let followA = Map.find A firstMap
+        if Set.contains None followA then
+            Set.union (Set.remove None followA) (first firstMap rest)
+        else
+            followA
+
+    /// Computes a map that maps every nonterminal A in the given grammar
+    /// to their FIRST(A) set.
+    /// FIRST(A) is the set of terminals which can appear as the first element
+    /// of any chain of rules matching nonterminal A.
+    ///
+    /// FIRST(A) is used when building LR(1) tables.
+    let firstSets (grammar : ContextFreeGrammar<'nt, 't>) : Map<'nt, Set<'t option>> =
+        let addOne k v map =
+            Map.add k (Set.add v (Map.find k map)) map
+
+        let addMany k vs map =
+            Map.add k (Set.union vs (Map.find k map)) map
+
+        let innerFirst (results : Map<'nt, Set<'t option>>) =
+            let foldRule results = function
+            | ProductionRule(head, body) ->
+                addMany head (first results body) results
+
+            grammar.P |> Set.fold foldRule results
+
+        MapHelpers.emptySetMap grammar.V |> FunctionHelpers.fix innerFirst
+
+    /// Computes a map that maps every nonterminal A in the given grammar to
+    /// its follow set FOLLOW(A).
+    let followSets (first : Symbol<'nt, 't> list -> Set<'t option>) (grammar : ContextFreeGrammar<'nt, 't>) : Map<'nt, Set<LRTerminal<'t>>> =
+        let pickNonterminals = function
+        | Nonterminal x, xs -> Some (x, xs)
+        | _ -> None
+
+        let innerFollow (results : Map<'nt, Set<LRTerminal<'t>>>) =
+            let foldRule results (ProductionRule(head, body)) =
+                let updateMap (results : Map<'nt, Set<LRTerminal<'t>>>) (nt, w') = 
+                    let bodyFirst = first w'
+                    let outputSet = Set.union (bodyFirst |> SetHelpers.choose id |> Set.map LRTerminal) (Map.find nt results)
+                    let outputSet = 
+                        if Set.contains None bodyFirst || List.isEmpty w' then
+                            Set.union (Map.find head results) outputSet
+                        else
+                            outputSet
+                    Map.add nt outputSet results
+                    
+                body |> ListHelpers.suffixes
+                     |> List.choose pickNonterminals
+                     |> List.fold updateMap results
+            Set.fold foldRule results grammar.P
+
+        MapHelpers.emptySetMap grammar.V |> Map.add grammar.S (Set.singleton EndOfInput)
+                                         |> FunctionHelpers.fix innerFollow
 
     /// Creates an LR(1) parser from the given grammar.
     /// If this cannot be done, an error message is returned.
     let createLR1 (grammar : ContextFreeGrammar<'nt, 't>) =
-        let closure = closureLR1 grammar
-        let follow l = Set.singleton l
+        let firstMap = firstSets grammar
+        let followMap = followSets (first firstMap) grammar
+
+        let closure = closureLR1 firstMap followMap grammar
         
-        createLR closure goto follow EndOfInput grammar
+        createLR closure goto Set.singleton EndOfInput grammar
 
     type LRMapParser<'nt, 't when 'nt : comparison and 't : comparison> = 
         Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * ('nt * int)

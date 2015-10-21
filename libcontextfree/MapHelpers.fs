@@ -4,10 +4,10 @@
 module MapHelpers =
     /// Merge two Map<'k, 'v> objects, using a given function that handles collisions.
     let mergeWith (f : 'v -> 'v -> 'v) (a : Map<'k, 'v>) (b : Map<'k, 'v>) =
-        let g acc k v =
+        let g acc k vb =
             let w = match Map.tryFind k acc with
-                    | Some v' -> f v v'
-                    | None -> v
+                    | Some va -> f va vb
+                    | None -> vb
             Map.add k w acc
         Map.fold g a b
 
@@ -25,3 +25,6 @@ module MapHelpers =
             Map.add k (Set.add v vs) m
         Seq.fold g Map.empty kvs
 
+    /// Creates a map of keys to empty sets from the given set.
+    let emptySetMap (keys : Set<'a>) : Map<'a, Set<'b>> =
+        Set.fold (fun acc a -> Map.add a Set.empty acc) Map.empty keys
