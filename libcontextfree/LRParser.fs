@@ -248,14 +248,16 @@ module LRParser =
                         match Map.tryFind key dict with
                         | None -> Success (Map.add key (Reduce item.Rule) dict)
                         | Some (Reduce reduceTarget) when reduceTarget = item.Rule -> Success dict
+                        | Some Accept -> Success dict
                         | Some (Reduce reduceTarget) -> 
                             Error (sprintf "Reduce/reduce conflict: %s and %s on terminal '%O'." (string item.Rule) (string reduceTarget) symbol)
                         | Some (Shift shiftTarget) -> 
                             let state = Map.findKey (fun key value -> value = shiftTarget) states |> closure
                             Error (sprintf "Shift/reduce conflict: %A and %s on terminal '%O'." (state |> Set.map (fst >> string) |> Set.toList) (string item.Rule) symbol)
                         | _ -> 
-                            // This shouldn't happen, as it would indicate a Reduce/Accept conflict, 
-                            // which just doesn't make sense.
+                            // This shouldn't happen, as it would indicate a Reduce/Fail conflict, 
+                            // which just doesn't make sense, because we're not generating any
+                            // Fail actions here.
                             Error "Unexpected reduce conflict. Fascinating."
 
                     // Try to reduce.
