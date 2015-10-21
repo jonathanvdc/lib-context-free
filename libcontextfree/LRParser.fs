@@ -225,20 +225,20 @@ module LRParser =
                     : Result<Map<int * LRTerminal<'t>, LRAction<'nt, 't>>> =
         let mutable results = Success Map.empty
         for KeyValue(state, stateIndex) in states do
-            let closureState = closure state
-            for (item, lookahead) in closureState do
+            let state = closure state
+            for (item, lookahead) in state do
                 match item.NextSymbol with
                 | Some(Terminal t) -> 
                     // Try to shift.
                     let addShift dict =
-                        let toIndex = Map.find (goto closureState (Terminal t)) states
+                        let toIndex = Map.find (goto state (Terminal t)) states
                         let key = stateIndex, LRTerminal t
                         match Map.tryFind key dict with
                         | None -> Success (Map.add key (Shift toIndex) dict)
                         | Some (Shift shiftTarget) when shiftTarget = toIndex -> Success dict
-                        | Some (Reduce reduceTarget) -> Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string reduceTarget))
+                        | Some (Reduce reduceTarget) -> Error (sprintf "Shift/reduce conflict: %A and %s on terminal '%O'." (state |> Set.map (fst >> string) |> Set.toList) (string reduceTarget) t)
                         | Some (Shift shiftTarget) ->
-                            let otherState = Map.findKey (fun key value -> value = shiftTarget) states
+                            let otherState = Map.findKey (fun key value -> value = shiftTarget) states |> closure
                             Error (sprintf "Shift/shift conflict: %A and %A." (state |> Set.map (fst >> string) |> Set.toList) (otherState |> Set.map (fst >> string) |> Set.toList))
                         | Some _ -> Error (sprintf "Shift conflict: %A." (state |> Set.map (fst >> string) |> Set.toList))
                     results <- Result.bind addShift results
@@ -249,10 +249,10 @@ module LRParser =
                         | None -> Success (Map.add key (Reduce item.Rule) dict)
                         | Some (Reduce reduceTarget) when reduceTarget = item.Rule -> Success dict
                         | Some (Reduce reduceTarget) -> 
-                            Error (sprintf "Reduce/reduce conflict: %s and %s." (string item.Rule) (string reduceTarget))
+                            Error (sprintf "Reduce/reduce conflict: %s and %s on terminal '%O'." (string item.Rule) (string reduceTarget) symbol)
                         | Some (Shift shiftTarget) -> 
-                            let state = Map.findKey (fun key value -> value = shiftTarget) states
-                            Error (sprintf "Shift/reduce conflict: %A and %s." (state |> Set.map (fst >> string) |> Set.toList) (string item.Rule))
+                            let state = Map.findKey (fun key value -> value = shiftTarget) states |> closure
+                            Error (sprintf "Shift/reduce conflict: %A and %s on terminal '%O'." (state |> Set.map (fst >> string) |> Set.toList) (string item.Rule) symbol)
                         | _ -> 
                             // This shouldn't happen, as it would indicate a Reduce/Accept conflict, 
                             // which just doesn't make sense.
