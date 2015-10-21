@@ -348,6 +348,10 @@ module LRParser =
                  (follow : 'a -> Set<LRTerminal<'t>>)
                  (initialLookahead : 'a)
                  (grammar : ContextFreeGrammar<'nt, 't>) =
+        // Memoize these two
+        let closure = FunctionHelpers.memoize closure
+        let goto = FunctionHelpers.memoize2 goto
+
         let initState = grammar.P |> Set.filter (fun (ProductionRule(head, _)) -> head = grammar.S)
                                   |> Set.map (fun (ProductionRule(head, body)) -> let item = LRItem(head, [], body) in item, initialLookahead)
         let stateMap = states closure goto initState |> SetHelpers.toIndexedMap
