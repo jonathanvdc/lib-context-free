@@ -163,3 +163,20 @@ module LLParser =
                                      |> Set.add EndOfInput
 
         ListHelpers.cartesianProduct allTerminals grammar.P |> Seq.fold foldCell (Success Map.empty)
+
+    /// Creates a string representation for the given LL(1) table.
+    let showLL (table : Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>) =
+        let allTerms = table |> Seq.map (fun (KeyValue((_, t), body)) -> Symbol.terminals body |> Set.ofSeq
+                                                                                               |> Set.map LTerminal
+                                                                                               |> Set.add t)
+                             |> Set.unionMany
+        let allNonterms = table |> Seq.map (fun (KeyValue((nt, _), body)) -> Symbol.nonterminals body |> Set.ofSeq 
+                                                                                                      |> Set.add nt)
+                                |> Set.unionMany
+
+        let printTerm = string
+        let printNonterm x = x.ToString()
+        let printRuleBody body = body |> Seq.map string 
+                                      |> String.concat ""
+
+        MapHelpers.showTable printNonterm printTerm printRuleBody allNonterms allTerms table
