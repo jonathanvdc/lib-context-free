@@ -23,14 +23,14 @@ module LRParser =
 
     type ParserState<'nt, 't> = 't list * (ParseTree<'nt, LRTerminal<'t>> * int) list
 
-    /// Peeks a terminal from the given terminal list.
-    let peekTerminal : 't list -> LRTerminal<'t> = function
-    | t :: _ -> LRTerminal t
+    /// Peeks a terminal from the given token list.
+    let peekTerminal (tokenType : 'token -> 'terminal) : 'token list -> LRTerminal<'terminal> = function
+    | t :: _ -> LRTerminal (tokenType t)
     | []     -> EndOfInput
 
     /// Shift the matched terminal t onto the parse stack and scan the next input symbol into the lookahead buffer.
     /// Push next state n onto the parse stack as the new current state.
-    let shift (n : int) (state : ParserState<'nt, 't>) : ParserState<'nt, 't> =
+    let shift (n : int) (state : ParserState<'nt, 'token>) : ParserState<'nt, 'token> =
         match state with
         | t :: ts, stack -> 
             ts, (TerminalLeaf (LRTerminal t), n) :: stack
@@ -52,8 +52,8 @@ module LRParser =
     /// The lookahead and input stream remain unchanged.
     let reduce (gotoTable : int -> 'nt -> int) 
                (startState : int)
-               (rule : ProductionRule<'nt, 't>) 
-               (state : ParserState<'nt, 't>) : ParserState<'nt, 't> = 
+               (rule : ProductionRule<'nt, 'terminal>) 
+               (state : ParserState<'nt, 'token>) : ParserState<'nt, 'token> = 
         match rule, state with
         | ProductionRule(lhs, body), (ts, stack) ->
             let elems, remStack = ListHelpers.splitAtIndex (List.length body) stack
@@ -72,21 +72,22 @@ module LRParser =
     /// Applies the LR parsing algorithm recursively to the given action table, goto table and state.
     /// A parse tree is returned if the parsing algorithm was successful. Otherwise,
     /// the list of remaining input terminals is returned (this may be useful for diagnostic purposes).
-    let rec parseLR (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>)
+    let rec parseLR (tokenType : 'token -> 'terminal)
+                    (actionTable : int -> LRTerminal<'terminal> -> LRAction<'nt, 'terminal>)
                     (gotoTable : int -> 'nt -> int)
                     (startSymbol : 'nt, startState : int)
-                    : ParserState<'nt, 't> -> Choice<ParseTree<'nt, 't>, 't list> = function
+                    : ParserState<'nt, 'token> -> Choice<ParseTree<'nt, 'token>, 'token list> = function
     | input, stack ->
-        let peek = peekTerminal input
+        let peek = peekTerminal tokenType input
         let state = peekStack startState stack
 
         match actionTable state peek with
         | Shift n ->
             (input, stack) |> shift n 
-                           |> parseLR actionTable gotoTable (startSymbol, startState)
+                           |> parseLR tokenType actionTable gotoTable (startSymbol, startState)
         | Reduce rule ->
             (input, stack) |> reduce gotoTable startState rule
-                           |> parseLR actionTable gotoTable (startSymbol, startState)
+                           |> parseLR tokenType actionTable gotoTable (startSymbol, startState)
         | Accept ->
             let items = stack |> List.map fst
                               |> List.choose normalizeLRTree
@@ -97,11 +98,12 @@ module LRParser =
             Choice2Of2 input
 
     /// Parses a terminal string based on the given LR table components.
-    let parse (actionTable : int -> LRTerminal<'t> -> LRAction<'nt, 't>) 
+    let parse (tokenType : 'token -> 'terminal)
+              (actionTable : int -> LRTerminal<'terminal> -> LRAction<'nt, 'terminal>) 
               (gotoTable : int -> 'nt -> int)
               (startState : 'nt * int) 
-              (input : 't list) =
-        parseLR actionTable gotoTable startState (input, [])
+              (input : 'token list) =
+        parseLR tokenType actionTable gotoTable startState (input, [])
 
 
     /// Defines LR(0) items, which are grammar rules with a special dot added somewhere in the right-hand side. 

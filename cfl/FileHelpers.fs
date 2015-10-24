@@ -226,7 +226,7 @@ let performEarleyParse =
 let performLRParse (createParser : ContextFreeGrammar<char, char> -> Result<LRParser.LRMapParser<char, char>>) =
     let parseLR (grammar : ContextFreeGrammar<char, char>) (input : Lazy<char list>) =
         createParser grammar |> Result.map (fun parser ->
-            let parseInput = LRParser.parse <||| LRParser.toFunctionalParser parser
+            let parseInput = LRParser.parse id <||| LRParser.toFunctionalParser parser
             match parseInput input.Value with
             | Choice1Of2 tree -> [tree]
             | Choice2Of2 _    -> []
