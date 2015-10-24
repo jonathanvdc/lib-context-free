@@ -19,11 +19,11 @@ module LLParser =
 
     /// Applies the LL(1) parsing algorithm to the given 
     /// expected symbol and list of tokens.
-    let rec parseLL (tokenType : 'token -> 'terminal)
-                    (parseTable : 'nt -> LTerminal<'terminal> -> Symbol<'nt, 'terminal> list option)
-                    (currentSymbol : Symbol<'nt, 'terminal>)
-                    (tokens : 'token list)
-                    : ('token list * ParseTree<'nt, 'token>) option =
+    let rec parse (tokenType : 'token -> 'terminal)
+                  (parseTable : 'nt -> LTerminal<'terminal> -> Symbol<'nt, 'terminal> list option)
+                  (currentSymbol : Symbol<'nt, 'terminal>)
+                  (tokens : 'token list)
+                  : ('token list * ParseTree<'nt, 'token>) option =
         let peek = peekTerminal tokenType tokens
         match currentSymbol with
         | Nonterminal nonterm -> 
@@ -34,7 +34,7 @@ module LLParser =
                                : ('token list * ParseTree<'nt, 'token> list) option =
                     match state with
                     | Some(tokens, trees) ->
-                        match parseLL tokenType parseTable sym tokens with
+                        match parse tokenType parseTable sym tokens with
                         | Some(ts, node) ->
                             Some (ts, node :: trees)
                         | None ->
@@ -54,53 +54,6 @@ module LLParser =
             | _ ->
                 // Unexpected terminal type.
                 None
-
-    /// Creates an LL(1) table from the given first and follow sets, as well as a grammar.
-    let createLLTable (first : Symbol<'nt, 't> list -> Set<'t option>) 
-                      (follow : 'nt -> Set<LTerminal<'t>>)
-                      (grammar : ContextFreeGrammar<'nt, 't>)
-                      : Result<Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>> =
-
-        let foldCell (state : Result<Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>>) 
-                     (A : 'nt, a : LTerminal<'t>, ProductionRule(ruleHead, ruleBody) as rule)
-                     : Result<Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>> =
-            match state with
-            | Success map ->
-                let firstSet = first ruleBody
-
-                match a with 
-                | LTerminal a ->
-                    match Set.contains (Some a) firstSet, Set.contains None firstSet with
-                    | true, true -> 
-                        Error (sprintf "FIRST/FOLLOW conflict: caused by rule '%s' in cell ('%s', '%s')." (string rule) (A.ToString()) (a.ToString()))
-                    | true, false -> 
-                        // FIRST
-                        match Map.tryFind (A, LTerminal a) map with
-                        | Some oldRule -> Error (sprintf "FIRST/FIRST conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (a.ToString()))
-                        | None -> Success (Map.add (A, LTerminal a) ruleBody map)
-                    | false, true when Set.contains (LTerminal a) (follow A) ->
-                        // FOLLOW
-                        match Map.tryFind (A, LTerminal a) map with
-                        | Some oldRule -> Error (sprintf "FIRST/FOLLOW conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (a.ToString()))
-                        | None -> Success (Map.add (A, LTerminal a) ruleBody map)
-                    | _ ->
-                        // Do nothing
-                        Success map
-                | EndOfInput ->
-                    if Set.contains None firstSet && Set.contains EndOfInput (follow A) then
-                        // FOLLOW
-                        match Map.tryFind (A, EndOfInput) map with
-                        | Some oldRule -> Error (sprintf "FIRST/FOLLOW conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (string a))
-                        | None -> Success (Map.add (A, EndOfInput) ruleBody map)
-                    else
-                        // Do nothing
-                        Success map
-            | Error e -> Error e
-
-        let allTerminals = grammar.T |> Set.map LTerminal
-                                     |> Set.add EndOfInput
-
-        ListHelpers.cartesianProduct3 grammar.V allTerminals grammar.P |> Seq.fold foldCell (Success Map.empty)
 
     /// Computes the FIRST set for the given terminal/nonterminal string.
     let rec first (firstMap : Map<'nt, Set<'t option>>) : Symbol<'nt, 't> list -> Set<'t option> = function
@@ -162,3 +115,51 @@ module LLParser =
         MapHelpers.emptySetMap grammar.V |> Map.add grammar.S (Set.singleton EndOfInput)
                                          |> FunctionHelpers.fix innerFollow
 
+
+    /// Creates an LL(1) table from the given grammar.
+    let createLLTable (grammar : ContextFreeGrammar<'nt, 't>)
+                      : Result<Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>> =
+
+        let first = FunctionHelpers.memoize (first (firstSets grammar))
+        let follow = FunctionHelpers.ofMapWithDefault Set.empty (followSets first grammar)
+
+        let foldCell (state : Result<Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>>) 
+                     (a : LTerminal<'t>, (ProductionRule(A, ruleBody) as rule))
+                     : Result<Map<'nt * LTerminal<'t>, Symbol<'nt, 't> list>> =
+            match state with
+            | Success map ->
+                let firstSet = first ruleBody
+
+                match a with 
+                | LTerminal a ->
+                    match Set.contains (Some a) firstSet, Set.contains None firstSet with
+                    | true, true -> 
+                        Error (sprintf "FIRST/FOLLOW conflict: caused by rule '%s' in cell ('%s', '%s')." (string rule) (A.ToString()) (a.ToString()))
+                    | true, false -> 
+                        // FIRST
+                        match Map.tryFind (A, LTerminal a) map with
+                        | Some oldRule -> Error (sprintf "FIRST/FIRST conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string (ProductionRule(A, oldRule))) (A.ToString()) (a.ToString()))
+                        | None -> Success (Map.add (A, LTerminal a) ruleBody map)
+                    | false, true when Set.contains (LTerminal a) (follow A) ->
+                        // FOLLOW
+                        match Map.tryFind (A, LTerminal a) map with
+                        | Some oldRule -> Error (sprintf "FIRST/FOLLOW conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string (ProductionRule(A, oldRule))) (A.ToString()) (a.ToString()))
+                        | None -> Success (Map.add (A, LTerminal a) ruleBody map)
+                    | _ ->
+                        // Do nothing
+                        Success map
+                | EndOfInput ->
+                    if Set.contains None firstSet && Set.contains EndOfInput (follow A) then
+                        // FOLLOW
+                        match Map.tryFind (A, EndOfInput) map with
+                        | Some oldRule -> Error (sprintf "FIRST/FOLLOW conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string (ProductionRule(A, oldRule))) (A.ToString()) (string a))
+                        | None -> Success (Map.add (A, EndOfInput) ruleBody map)
+                    else
+                        // Do nothing
+                        Success map
+            | Error e -> Error e
+
+        let allTerminals = grammar.T |> Set.map LTerminal
+                                     |> Set.add EndOfInput
+
+        ListHelpers.cartesianProduct allTerminals grammar.P |> Seq.fold foldCell (Success Map.empty)

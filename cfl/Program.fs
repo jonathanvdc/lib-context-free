@@ -70,6 +70,10 @@ let subprograms : Subprogram list =
           Doc = "Outputs a dot file that represents an if-else push-down automaton.";
           Action = performReadWrite readPdaXmlFile writePdaGraphvizFile }
 
+        { Name = "ll-parse";
+          Doc = "Performs an LL(1) parse.";
+          Action = performLLParse }
+
         { Name = "lr0-table";
           Doc = "Builds and prints an LR(0) table for the given input grammar.";
           Action = maybePrintCfgProperty (LRParser.createLR0 >> Result.map LRParser.printLR) }

@@ -233,3 +233,15 @@ let performLRParse (createParser : ContextFreeGrammar<char, char> -> Result<LRPa
         )
 
     performParse parseLR
+
+let performLLParse =
+    let parseLL (grammar : ContextFreeGrammar<char, char>) (input : Lazy<char list>) =
+        LLParser.createLLTable grammar |> Result.map (fun table ->
+            let tableFunc = fun x y -> Map.tryFind (x, y) table
+            match LLParser.parse id tableFunc (Nonterminal grammar.S) input.Value with
+            | Some ([], tree) -> [tree]
+            | Some (_, _)
+            | None            -> []
+        )
+
+    performParse parseLL
