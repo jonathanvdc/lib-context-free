@@ -219,7 +219,7 @@ let performParse (parse : ContextFreeGrammar<char, char> -> Lazy<char list> -> R
 
 let performEarleyParse = 
     let parseEarley grammar (input : Lazy<char list>) = 
-        Result.Success (EarleyParser.parse grammar input.Value)
+        Result.Success (EarleyParser.parse id grammar input.Value)
 
     performParse parseEarley
 
