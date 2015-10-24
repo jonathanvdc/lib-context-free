@@ -12,28 +12,14 @@ module LRParser =
     /// Indicates that the LR parser could not parse the input string.
     | Fail
 
-    type LRTerminal<'t> = 
-    | LRTerminal of 't
-    | EndOfInput
-
-        override this.ToString() =
-            match this with
-            | LRTerminal t -> t.ToString()
-            | EndOfInput   -> "eof"
-
-    type ParserState<'nt, 't> = 't list * (ParseTree<'nt, LRTerminal<'t>> * int) list
-
-    /// Peeks a terminal from the given token list.
-    let peekTerminal (tokenType : 'token -> 'terminal) : 'token list -> LRTerminal<'terminal> = function
-    | t :: _ -> LRTerminal (tokenType t)
-    | []     -> EndOfInput
+    type ParserState<'nt, 't> = 't list * (ParseTree<'nt, LTerminal<'t>> * int) list
 
     /// Shift the matched terminal t onto the parse stack and scan the next input symbol into the lookahead buffer.
     /// Push next state n onto the parse stack as the new current state.
     let shift (n : int) (state : ParserState<'nt, 'token>) : ParserState<'nt, 'token> =
         match state with
         | t :: ts, stack -> 
-            ts, (TerminalLeaf (LRTerminal t), n) :: stack
+            ts, (TerminalLeaf (LTerminal t), n) :: stack
         | [], stack ->
             [], (TerminalLeaf EndOfInput, n) :: stack
 
@@ -63,8 +49,8 @@ module LRParser =
             ts, (newTree, n) :: remStack
 
     /// "Normalizes" the given LR parser tree: end-of-input leaves are discarded recursively.
-    let rec normalizeLRTree : ParseTree<'nt, LRTerminal<'t>> -> ParseTree<'nt, 't> option = function
-    | TerminalLeaf (LRTerminal t) -> Some (TerminalLeaf t)
+    let rec normalizeLRTree : ParseTree<'nt, LTerminal<'t>> -> ParseTree<'nt, 't> option = function
+    | TerminalLeaf (LTerminal t) -> Some (TerminalLeaf t)
     | TerminalLeaf EndOfInput     -> None
     | ProductionNode(lhs, body)   ->
         Some (ProductionNode(lhs, List.choose normalizeLRTree body))
@@ -73,12 +59,12 @@ module LRParser =
     /// A parse tree is returned if the parsing algorithm was successful. Otherwise,
     /// the list of remaining input terminals is returned (this may be useful for diagnostic purposes).
     let rec parseLR (tokenType : 'token -> 'terminal)
-                    (actionTable : int -> LRTerminal<'terminal> -> LRAction<'nt, 'terminal>)
+                    (actionTable : int -> LTerminal<'terminal> -> LRAction<'nt, 'terminal>)
                     (gotoTable : int -> 'nt -> int)
                     (startSymbol : 'nt, startState : int)
                     : ParserState<'nt, 'token> -> Choice<ParseTree<'nt, 'token>, 'token list> = function
     | input, stack ->
-        let peek = peekTerminal tokenType input
+        let peek = LLParser.peekTerminal tokenType input
         let state = peekStack startState stack
 
         match actionTable state peek with
@@ -99,7 +85,7 @@ module LRParser =
 
     /// Parses a terminal string based on the given LR table components.
     let parse (tokenType : 'token -> 'terminal)
-              (actionTable : int -> LRTerminal<'terminal> -> LRAction<'nt, 'terminal>) 
+              (actionTable : int -> LTerminal<'terminal> -> LRAction<'nt, 'terminal>) 
               (gotoTable : int -> 'nt -> int)
               (startState : 'nt * int) 
               (input : 'token list) =
@@ -221,10 +207,10 @@ module LRParser =
     /// the grammar's starting symbol, and the set of states.
     let actionTable (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
                     (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
-                    (follow : 'a -> Set<LRTerminal<'t>>)
+                    (follow : 'a -> Set<LTerminal<'t>>)
                     (startSymbol : 'nt)
                     (states : Map<Set<LRItem<'nt, 't> * 'a>, int>)
-                    : Result<Map<int * LRTerminal<'t>, LRAction<'nt, 't>>> =
+                    : Result<Map<int * LTerminal<'t>, LRAction<'nt, 't>>> =
         let mutable results = Success Map.empty
         for KeyValue(state, stateIndex) in states do
             let state = closure state
@@ -234,7 +220,7 @@ module LRParser =
                     // Try to shift.
                     let addShift dict =
                         let toIndex = Map.find (goto state (Terminal t)) states
-                        let key = stateIndex, LRTerminal t
+                        let key = stateIndex, LTerminal t
                         match Map.tryFind key dict with
                         | None -> Success (Map.add key (Shift toIndex) dict)
                         | Some (Shift shiftTarget) when shiftTarget = toIndex -> Success dict
@@ -275,7 +261,7 @@ module LRParser =
         results
 
     /// Gets the action at the given state/terminal cell in the LR table.
-    let getAction (table : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>) (state : int) (terminal : LRTerminal<'t>) : LRAction<'nt, 't> =
+    let getAction (table : Map<int * LTerminal<'t>, LRAction<'nt, 't>>) (state : int) (terminal : LTerminal<'t>) : LRAction<'nt, 't> =
         match Map.tryFind (state, terminal) table with
         | Some action -> action
         | None        -> Fail
@@ -326,7 +312,7 @@ module LRParser =
     ///
     /// FOLLOW(k, B) of an item set k and a nonterminal B is the union of the 
     /// follow sets of all items in k where '•' is followed by B.
-    let follow (followMap : Map<'nt, Set<LRTerminal<'t>>>) (k : Set<LRItem<'nt, 't>>) (B : 'nt) : Set<LRTerminal<'t>> =
+    let follow (followMap : Map<'nt, Set<LTerminal<'t>>>) (k : Set<LRItem<'nt, 't>>) (B : 'nt) : Set<LTerminal<'t>> =
         let mapping = function
         | LRItem(_, _, Nonterminal nt :: _) when nt = B -> 
             Map.find B followMap
@@ -337,7 +323,7 @@ module LRParser =
           |> Set.unionMany
 
     /// A specialization of the closure function for LR(1) items.
-    let closureLR1 (firstMap : Map<'nt, Set<'t option>>) (followMap : Map<'nt, Set<LRTerminal<'t>>>) (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * LRTerminal<'t>>) =
+    let closureLR1 (firstMap : Map<'nt, Set<'t option>>) (followMap : Map<'nt, Set<LTerminal<'t>>>) (grammar : ContextFreeGrammar<'nt, 't>) (basis : Set<LRItem<'nt, 't> * LTerminal<'t>>) =
         let getLookahead (closureSet : Set<LRItem<'nt, 't>>) =
             let getFollowers = FunctionHelpers.memoize (follow followMap closureSet)
             fun (item : LRItem<'nt, 't>) -> 
@@ -349,7 +335,7 @@ module LRParser =
     /// and an initial state. If this cannot be done, an error message is returned.
     let createLR (closure : Set<LRItem<'nt, 't> * 'a> -> Set<LRItem<'nt, 't> * 'a>)
                  (goto : Set<LRItem<'nt, 't> * 'a> -> Symbol<'nt, 't> -> Set<LRItem<'nt, 't> * 'a>)
-                 (follow : 'a -> Set<LRTerminal<'t>>)
+                 (follow : 'a -> Set<LTerminal<'t>>)
                  (initialLookahead : 'a)
                  (grammar : ContextFreeGrammar<'nt, 't>) =
         // Memoize these two
@@ -369,91 +355,31 @@ module LRParser =
     /// If this cannot be done, an error message is returned.
     let createLR0 (grammar : ContextFreeGrammar<'nt, 't>) =
         let closure = closureLR0 grammar
-        let follow _ = grammar.T |> Set.map LRTerminal
+        let follow _ = grammar.T |> Set.map LTerminal
                                  |> Set.add EndOfInput
         
         createLR closure goto follow () grammar
 
-    /// Computes the FIRST set for the given terminal/nonterminal string.
-    let rec first (firstMap : Map<'nt, Set<'t option>>) : Symbol<'nt, 't> list -> Set<'t option> = function
-    | Terminal a :: _ -> Set.singleton (Some a)
-    | [] -> Set.singleton None
-    | Nonterminal A :: rest ->
-        let followA = Map.find A firstMap
-        if Set.contains None followA then
-            Set.union (Set.remove None followA) (first firstMap rest)
-        else
-            followA
-
-    /// Computes a map that maps every nonterminal A in the given grammar
-    /// to their FIRST(A) set.
-    /// FIRST(A) is the set of terminals which can appear as the first element
-    /// of any chain of rules matching nonterminal A.
-    ///
-    /// FIRST(A) is used when building LR(1) tables.
-    let firstSets (grammar : ContextFreeGrammar<'nt, 't>) : Map<'nt, Set<'t option>> =
-        let addOne k v map =
-            Map.add k (Set.add v (Map.find k map)) map
-
-        let addMany k vs map =
-            Map.add k (Set.union vs (Map.find k map)) map
-
-        let innerFirst (results : Map<'nt, Set<'t option>>) =
-            let foldRule results = function
-            | ProductionRule(head, body) ->
-                addMany head (first results body) results
-
-            grammar.P |> Set.fold foldRule results
-
-        MapHelpers.emptySetMap grammar.V |> FunctionHelpers.fix innerFirst
-
-    /// Computes a map that maps every nonterminal A in the given grammar to
-    /// its follow set FOLLOW(A).
-    let followSets (first : Symbol<'nt, 't> list -> Set<'t option>) (grammar : ContextFreeGrammar<'nt, 't>) : Map<'nt, Set<LRTerminal<'t>>> =
-        let pickNonterminals = function
-        | Nonterminal x, xs -> Some (x, xs)
-        | _ -> None
-
-        let innerFollow (results : Map<'nt, Set<LRTerminal<'t>>>) =
-            let foldRule results (ProductionRule(head, body)) =
-                let updateMap (results : Map<'nt, Set<LRTerminal<'t>>>) (nt, w') = 
-                    let bodyFirst = first w'
-                    let outputSet = Set.union (bodyFirst |> SetHelpers.choose id |> Set.map LRTerminal) (Map.find nt results)
-                    let outputSet = 
-                        if Set.contains None bodyFirst || List.isEmpty w' then
-                            Set.union (Map.find head results) outputSet
-                        else
-                            outputSet
-                    Map.add nt outputSet results
-                    
-                body |> ListHelpers.suffixes
-                     |> List.choose pickNonterminals
-                     |> List.fold updateMap results
-            Set.fold foldRule results grammar.P
-
-        MapHelpers.emptySetMap grammar.V |> Map.add grammar.S (Set.singleton EndOfInput)
-                                         |> FunctionHelpers.fix innerFollow
-
     /// Creates an LR(1) parser from the given grammar.
     /// If this cannot be done, an error message is returned.
     let createLR1 (grammar : ContextFreeGrammar<'nt, 't>) =
-        let firstMap = firstSets grammar
-        let followMap = followSets (first firstMap) grammar
+        let firstMap = LLParser.firstSets grammar
+        let followMap = LLParser.followSets (LLParser.first firstMap) grammar
 
         let closure = closureLR1 firstMap followMap grammar
         
         createLR closure goto Set.singleton EndOfInput grammar
 
     type LRMapParser<'nt, 't when 'nt : comparison and 't : comparison> = 
-        Map<int * LRTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * ('nt * int)
+        Map<int * LTerminal<'t>, LRAction<'nt, 't>> * Map<int * 'nt, int> * ('nt * int)
 
     type LRFunctionalParser<'nt, 't> = 
-        (int -> LRTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * ('nt * int)
+        (int -> LTerminal<'t> -> LRAction<'nt, 't>) * (int -> 'nt -> int) * ('nt * int)
 
     /// Converts the given parser, which has a
     /// map-based action and goto table, to a parser
     /// that uses a function-based action and goto table.
-    let toFunctionalParser (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : 'nt * int) 
+    let toFunctionalParser (actionTable : Map<int * LTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, startState : 'nt * int) 
                            : LRFunctionalParser<'nt, 't> = 
         getAction actionTable, (fun i nt -> Map.find (i, nt) gotoTable), startState
 
@@ -478,7 +404,7 @@ module LRParser =
               |> String.concat (System.Environment.NewLine + horizSep + System.Environment.NewLine)
 
     /// Prints an LR parser triple.
-    let printLR (actionTable : Map<int * LRTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, (_ : 'nt, startState : int))
+    let printLR (actionTable : Map<int * LTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, (_ : 'nt, startState : int))
                 : string =
         let actionStates = actionTable |> Seq.map (fun (KeyValue((i, _), _)) -> i)
                                        |> Set.ofSeq
