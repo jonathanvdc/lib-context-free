@@ -28,3 +28,35 @@ module MapHelpers =
     /// Creates a map of keys to empty sets from the given set.
     let emptySetMap (keys : Set<'a>) : Map<'a, Set<'b>> =
         Set.fold (fun acc a -> Map.add a Set.empty acc) Map.empty keys
+
+    /// Creates a string representation for the given table.
+    let showTable (showA : 'a -> string) 
+                  (showB : 'b -> string) 
+                  (showC : 'c -> string) 
+                  (rows : seq<'a>) 
+                  (columns : seq<'b>) 
+                  (table : Map<'a * 'b, 'c>)
+                  : string =
+        let cellWidth = Seq.concat [rows |> Seq.map (showA >> String.length); 
+                                    columns |> Seq.map (showB >> String.length);
+                                    table |> Seq.map (fun (KeyValue((a, b), c)) -> 
+                                                      max (String.length (showA a)) (max (String.length (showB b)) (String.length (showC c))));
+                                    ] |> Seq.max
+        let actualWidth = cellWidth + 2
+        let colCount = Seq.length columns
+        let horizSep = List.replicate (colCount + 1) (String.replicate actualWidth "-") |> String.concat "+"
+
+        let showCellContents text =
+            let text = " " + text
+            text + String.replicate (actualWidth - String.length text) " "
+
+        let getCellValue row column =
+            match Map.tryFind (row, column) table with
+            | Some x -> showCellContents (showC x)
+            | None   -> showCellContents ""
+
+        let cells = rows |> Seq.map (fun r -> Seq.append (seq [showCellContents (showA r)]) (Seq.map (fun c -> getCellValue r c) columns))
+        let cells = Seq.append [Seq.append [showCellContents ""] (columns |> Seq.map (fun b -> showCellContents(showB b)))] cells
+
+        cells |> Seq.map (String.concat "|")
+              |> String.concat (System.Environment.NewLine + horizSep + System.Environment.NewLine)

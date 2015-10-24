@@ -383,26 +383,6 @@ module LRParser =
                            : LRFunctionalParser<'nt, 't> = 
         getAction actionTable, (fun i nt -> Map.find (i, nt) gotoTable), startState
 
-    let private showTable (show : 'c -> string) (cellWidth : int) (rows : seq<'a>) (columns : seq<'b>) (table : Map<'a * 'b, 'c>) =
-        let actualWidth = cellWidth + 2
-        let colCount = Seq.length columns
-        let horizSep = List.replicate (colCount + 1) (String.replicate actualWidth "-") |> String.concat "+"
-
-        let showCellContents text =
-            let text = " " + text
-            text + String.replicate (actualWidth - String.length text) " "
-
-        let getCellValue row column =
-            match Map.tryFind (row, column) table with
-            | Some x -> showCellContents (show x)
-            | None   -> showCellContents ""
-
-        let cells = rows |> Seq.map (fun r -> Seq.append (seq [showCellContents (r.ToString())]) (Seq.map (fun c -> getCellValue r c) columns))
-        let cells = Seq.append [Seq.append [showCellContents ""] (columns |> Seq.map (fun c -> showCellContents(c.ToString())))] cells
-
-        cells |> Seq.map (String.concat "|")
-              |> String.concat (System.Environment.NewLine + horizSep + System.Environment.NewLine)
-
     /// Prints an LR parser triple.
     let printLR (actionTable : Map<int * LTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, (_ : 'nt, startState : int))
                 : string =
@@ -418,9 +398,6 @@ module LRParser =
         let allNonterminals = gotoTable |> Seq.map (fun (KeyValue((_, nt), _)) -> nt) 
                                         |> Set.ofSeq
 
-        let termStrings = allTerminals |> Seq.map string
-        let nontermStrings = allNonterminals |> Seq.map (fun x -> x.ToString())
-
         let getRule = function
         | Reduce rule -> Some rule
         | _           -> None
@@ -433,13 +410,6 @@ module LRParser =
                                     |> Seq.map (fun (KeyValue(r, i)) -> sprintf "%d. %s" i (string r))
                                     |> String.concat System.Environment.NewLine
 
-        let cellWidth = Seq.concat [termStrings |> Seq.map String.length; 
-                                    nontermStrings |> Seq.map String.length;
-                                    allRules |> Seq.map (fun (KeyValue(_, i)) -> String.length (string i) + 1);
-                                    allStates |> Seq.map (string >> String.length);
-                                    seq [ String.length "eof" ]]
-                        |> Seq.max
-
         let showAction = function
         | Shift state -> string state
         | Reduce rule -> allRules |> Map.find rule
@@ -448,8 +418,8 @@ module LRParser =
         | Accept      -> "acc"
         | Fail        -> ""
 
-        let actionTable = showTable showAction cellWidth allStates allTerminals actionTable
-        let gotoTable = showTable string cellWidth allStates allNonterminals gotoTable
+        let actionTable = MapHelpers.showTable string string showAction allStates allTerminals actionTable
+        let gotoTable = MapHelpers.showTable string (fun nt -> nt.ToString()) string allStates allNonterminals gotoTable
 
         ["Start state: " + string startState;
          "Rules:"; printedRules; "";

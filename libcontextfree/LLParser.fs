@@ -71,23 +71,29 @@ module LLParser =
                 match a with 
                 | LTerminal a ->
                     match Set.contains (Some a) firstSet, Set.contains None firstSet with
-                    | true, true -> Error (sprintf "FIRST/FOLLOW conflict: caused by rule '%s' in cell ('%s', '%s')." (string rule) (A.ToString()) (a.ToString()))
+                    | true, true -> 
+                        Error (sprintf "FIRST/FOLLOW conflict: caused by rule '%s' in cell ('%s', '%s')." (string rule) (A.ToString()) (a.ToString()))
                     | true, false -> 
+                        // FIRST
                         match Map.tryFind (A, LTerminal a) map with
                         | Some oldRule -> Error (sprintf "FIRST/FIRST conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (a.ToString()))
                         | None -> Success (Map.add (A, LTerminal a) ruleBody map)
                     | false, true when Set.contains (LTerminal a) (follow A) ->
+                        // FOLLOW
                         match Map.tryFind (A, LTerminal a) map with
-                        | Some oldRule -> Error (sprintf "FIRST/FIRST conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (a.ToString()))
+                        | Some oldRule -> Error (sprintf "FIRST/FOLLOW conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (a.ToString()))
                         | None -> Success (Map.add (A, LTerminal a) ruleBody map)
                     | _ ->
+                        // Do nothing
                         Success map
                 | EndOfInput ->
                     if Set.contains None firstSet && Set.contains EndOfInput (follow A) then
+                        // FOLLOW
                         match Map.tryFind (A, EndOfInput) map with
-                        | Some oldRule -> Error (sprintf "FIRST/FIRST conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (string a))
+                        | Some oldRule -> Error (sprintf "FIRST/FOLLOW conflict: caused by rules '%s' and '%s' in cell ('%s', '%s')." (string rule) (string oldRule) (A.ToString()) (string a))
                         | None -> Success (Map.add (A, EndOfInput) ruleBody map)
                     else
+                        // Do nothing
                         Success map
             | Error e -> Error e
 
