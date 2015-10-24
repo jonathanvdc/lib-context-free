@@ -383,8 +383,8 @@ module LRParser =
                            : LRFunctionalParser<'nt, 't> = 
         getAction actionTable, (fun i nt -> Map.find (i, nt) gotoTable), startState
 
-    /// Prints an LR parser triple.
-    let printLR (actionTable : Map<int * LTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, (_ : 'nt, startState : int))
+    /// Gets a string representation for the given LR parser triple.
+    let showLR (actionTable : Map<int * LTerminal<'t>, LRAction<'nt, 't>>, gotoTable : Map<int * 'nt, int>, (_ : 'nt, startState : int))
                 : string =
         let actionStates = actionTable |> Seq.map (fun (KeyValue((i, _), _)) -> i)
                                        |> Set.ofSeq
