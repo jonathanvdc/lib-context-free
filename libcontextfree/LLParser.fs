@@ -42,7 +42,7 @@ module LLParser =
                     | None -> None
 
                 match List.fold foldSymbol (Some (tokens, [])) body with
-                | Some(tokens, trees) -> Some(tokens, ProductionNode(nonterm, trees))
+                | Some(tokens, trees) -> Some(tokens, ProductionNode(nonterm, List.rev trees))
                 | None -> None
             | None -> 
                 // Unexpected nonterminal/terminal combination.
