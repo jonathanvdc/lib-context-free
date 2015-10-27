@@ -92,6 +92,21 @@ module ListHelpers =
                      for xs in cartesianPower (n - 1) l do
                          yield x :: xs ]
 
+    /// The Cartesian product of two lists: all pairs of items from
+    /// the given lists are computed.
+    let cartesianProduct (xs : #seq<'a>) (ys : #seq<'b>) : seq<'a * 'b> =
+        seq { for x in xs do
+                  for y in ys do
+                      yield x, y }
+
+    /// The Cartesian product of three lists: all triples of items from
+    /// the given lists are computed.
+    let cartesianProduct3 (xs : #seq<'a>) (ys : #seq<'b>) (zs : #seq<'c>) : seq<'a * 'b * 'c> =
+        seq { for x in xs do
+                  for y in ys do
+                      for z in zs do
+                        yield x, y, z }
+
     /// Combines the three lists into a list of triples. The result is
     /// truncated whenever any of the lists is empty.
     let rec zip3Truncate (xxs : 'x list) (yys : 'y list) (zzs : 'z list) =
@@ -99,3 +114,8 @@ module ListHelpers =
         | (x :: xs), (y :: ys), (z :: zs) ->
             (x, y, z) :: zip3Truncate xs ys zs
         | _ -> []
+
+    /// Computes all suffixes of the given list.
+    let rec suffixes : 'x list -> ('x * 'x list) list = function
+    | x :: xs -> (x, xs) :: suffixes xs
+    | [] -> []

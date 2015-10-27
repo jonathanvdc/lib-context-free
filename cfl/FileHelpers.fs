@@ -199,12 +199,12 @@ let writeAll (write : string -> 'a -> Result<unit>) (emptyResult : Result<unit>)
                    |> Result.sequence
                    |> Result.map ignore
 
-let performParse (parse : ContextFreeGrammar<char, char> -> char list -> Result<#seq<ParseTree<char, char>>>) (argv : string list) =
+let performParse (parse : ContextFreeGrammar<char, char> -> Lazy<char list> -> Result<#seq<ParseTree<char, char>>>) (argv : string list) =
     match argv with
     | [grammarPath; outputPath] ->
         match readCfgXmlFile grammarPath with
         | Success grammar ->
-            let inputString = readStdinToTrimmedEnd()
+            let inputString = lazy readStdinToTrimmedEnd()
             inputString |> parse grammar
                         |> Result.map (Seq.map (ParseTree.map string string))
                         |> Result.map (writeAll writeParseTreeFile (Error "The given string does not belong to the given grammar.") outputPath)
@@ -218,18 +218,30 @@ let performParse (parse : ContextFreeGrammar<char, char> -> char list -> Result<
                 output path pattern."
 
 let performEarleyParse = 
-    let parseEarley grammar input = 
-        Result.Success (EarleyParser.parse grammar input)
+    let parseEarley grammar (input : Lazy<char list>) = 
+        Result.Success (EarleyParser.parse id grammar input.Value)
 
     performParse parseEarley
 
 let performLRParse (createParser : ContextFreeGrammar<char, char> -> Result<LRParser.LRMapParser<char, char>>) =
-    let parseLR (grammar : ContextFreeGrammar<char, char>) (input : char list) =
+    let parseLR (grammar : ContextFreeGrammar<char, char>) (input : Lazy<char list>) =
         createParser grammar |> Result.map (fun parser ->
-            let parseInput = LRParser.parse <||| LRParser.toFunctionalParser parser
-            match parseInput input with
+            let parseInput = LRParser.parse id <||| LRParser.toFunctionalParser parser
+            match parseInput input.Value with
             | Choice1Of2 tree -> [tree]
             | Choice2Of2 _    -> []
         )
 
     performParse parseLR
+
+let performLLParse =
+    let parseLL (grammar : ContextFreeGrammar<char, char>) (input : Lazy<char list>) =
+        LLParser.createLLTable grammar |> Result.map (fun table ->
+            let tableFunc = fun x y -> Map.tryFind (x, y) table
+            match LLParser.parse id tableFunc (Nonterminal grammar.S) input.Value with
+            | Some ([], tree) -> [tree]
+            | Some (_, _)
+            | None            -> []
+        )
+
+    performParse parseLL

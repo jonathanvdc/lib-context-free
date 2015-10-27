@@ -50,6 +50,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="Result.fs" />
+    <Compile Include="FunctionHelpers.fs" />
     <Compile Include="StringHelpers.fs" />
     <Compile Include="ListHelpers.fs" />
     <Compile Include="SetHelpers.fs" />
@@ -61,12 +62,13 @@
     <Compile Include="ChomskyNormalForm.fs" />
     <Compile Include="PushDownAutomaton.fs" />
     <Compile Include="CYKParser.fs" />
+    <Compile Include="EarleyParser.fs" />
+    <Compile Include="LLParser.fs" />
+    <Compile Include="LRParser.fs" />
     <Compile Include="IOHelpers.fs" />
     <Compile Include="TreeHandler.fs" />
     <Compile Include="GraphvizHandler.fs" />
     <Compile Include="XmlHandler.fs" />
-    <Compile Include="EarleyParser.fs" />
-    <Compile Include="LRParser.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>
