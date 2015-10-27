@@ -60,6 +60,7 @@
     <Compile Include="ContextFreeGrammar.fs" />
     <Compile Include="ChomskyNormalForm.fs" />
     <Compile Include="PushDownAutomaton.fs" />
+    <Compile Include="CYKParser.fs" />
     <Compile Include="IOHelpers.fs" />
     <Compile Include="TreeHandler.fs" />
     <Compile Include="GraphvizHandler.fs" />
