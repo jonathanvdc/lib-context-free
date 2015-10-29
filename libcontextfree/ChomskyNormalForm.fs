@@ -119,17 +119,24 @@ module ChomskyNormalForm =
     let binStep : TermCfg<'nt, 't> -> BinCfg<'nt * int, 't> =
         function
         | TermCfg P ->
+            let counter = ref 0
+            let count() =
+                counter := !counter + 1
+                !counter
+
             let convertRule : TermRule<'nt, 't> -> Set<BinRule<'nt * int, 't>> =
                 function
                 | TNonterminalRule(Some H, body) ->
                     // H → X1 X2 X3 ... Xn
-                    let rec toBin (i : int) =
+                    let rec toBin isFirst =
                         function
                         | []      -> Set.singleton <| BEpsilonRule (Some (H,0))
-                        | [X]     -> Set.singleton <| BUnitRule (Some (H,i), (X,0))
-                        | [X; Y]  -> Set.singleton <| BBinaryRule (Some (H,i), ((X,0), (Y,0)))
-                        | X :: Xs -> Set.add (BBinaryRule (Some (H,i), ((X,0), (H,i+1)))) (toBin (i+1) Xs)
-                    toBin 0 body
+                        | [X]     -> Set.singleton <| BUnitRule (Some (H,if isFirst then 0 else count()), (X,0))
+                        | [X; Y]  -> Set.singleton <| BBinaryRule (Some (H,if isFirst then 0 else count()), ((X,0), (Y,0)))
+                        | X :: Xs ->
+                            let c = count()
+                            Set.add (BBinaryRule (Some (H,if isFirst then 0 else c), ((X,0), (H,c+1)))) (toBin false Xs)
+                    toBin true body
 
                 | TNonterminalRule(None, [S]) ->
                     // S0 → S
@@ -188,6 +195,7 @@ module ChomskyNormalForm =
             // Get all nullable nonterminals, using our base case from earlier.
             let nullableNonterminals : Set<'nt> =
                 Set.ofSeq (searchNullables baseNullableNonterminals)
+
             let inline isNullable (nt : 'nt) : bool =
                 Set.contains nt nullableNonterminals
                 
@@ -198,10 +206,12 @@ module ChomskyNormalForm =
                     Set.singleton (DBinaryRule (h, (x, y)))
                     |> if isNullable x then Set.add (DUnitRule (h, y)) else id
                     |> if isNullable y then Set.add (DUnitRule (h, x)) else id
-                | BEpsilonRule None   -> Set.singleton DStartToEpsilon
-                | BEpsilonRule _      -> Set.empty
-                | BTerminalRule(x, y) -> Set.singleton (DTerminalRule(x, y))
-                | BUnitRule(x, y)     -> Set.singleton (DUnitRule(x, y))
+                | BEpsilonRule None     -> Set.singleton DStartToEpsilon
+                | BEpsilonRule _        -> Set.empty
+                | BTerminalRule(h, t)   -> Set.singleton (DTerminalRule(h, t))
+                | BUnitRule(h, x)       ->
+                    Set.singleton (DUnitRule(h, x))
+                    |> (if Option.isNone h && isNullable x then Set.add DStartToEpsilon else id)
             
             let P' = Set.unionMany (Set.map convertRule P)
             DelCfg P'
@@ -215,15 +225,25 @@ module ChomskyNormalForm =
                                           | DBinaryRule(Some h, _)    -> H = h
                                           | DTerminalRule(Some h, _)  -> H = h
                                           | _                         -> false)
-                
+            
+            let replaceHead (h : 'nt option) : ChomskyNormalRule<'nt, 't> -> ChomskyNormalRule<'nt, 't> =
+                function
+                | BinaryRule(_, b) -> BinaryRule(h, b)
+                | TerminalRule(_, b) -> TerminalRule(h, b)
+                | StartToEpsilon -> StartToEpsilon
+
             let rec convertRule : DelRule<'nt, 't> -> Set<ChomskyNormalRule<'nt, 't>> =
                 function
-                | DUnitRule(h, x)        -> Set.unionMany (Set.map convertRule (rulesFrom x))
                 | DBinaryRule(h, (x, y)) -> Set.singleton (BinaryRule(h, (x, y)))
                 | DTerminalRule(h, t)    -> Set.singleton (TerminalRule(h, t))
                 | DStartToEpsilon        -> Set.singleton (StartToEpsilon)
+                | DUnitRule(h, x) -> rulesFrom x
+                                     |> Set.map convertRule
+                                     |> Set.unionMany
+                                     |> Set.map (replaceHead h)
         
             let P' = Set.unionMany (Set.map convertRule P)
+            
             ChomskyNormalCfg P'
 
     /// Convert the given context-free grammar to Chomsky normal form.
@@ -238,7 +258,7 @@ module ChomskyNormalForm =
             let ruleNonTerminals : ChomskyNormalRule<'nt,'t> -> 'nt option Set =
                 function
                 | BinaryRule (A, (B, C)) -> set [A; Some B; Some C]
-                | TerminalRule (A , _)   -> set [A]
+                | TerminalRule (A, _)    -> set [A]
                 | StartToEpsilon         -> set [None]        
             
             Set.map ruleNonTerminals rules |> Set.unionMany 
@@ -264,6 +284,43 @@ module ChomskyNormalForm =
                 | _ -> None
 
             SetHelpers.choose getBinaryProduction rules
+    
+    /// Map a function φ over the stack symbols of a CNF grammar. φ should be injective.
+    let mapNonterminals (φ : 'nt1 -> 'nt2) : ChomskyNormalCfg<'nt1, 't> -> ChomskyNormalCfg<'nt2, 't> =
+        function
+        | ChomskyNormalCfg rules ->
+            let mapOnRule : ChomskyNormalRule<'nt1, 't> -> ChomskyNormalRule<'nt2, 't> =
+                function
+                | BinaryRule (A, (B, C)) -> BinaryRule (Option.map φ A, (φ B, φ C)) 
+                | TerminalRule (A, a)    -> TerminalRule (Option.map φ A, a)
+                | StartToEpsilon         -> StartToEpsilon
+
+            ChomskyNormalCfg (Set.map mapOnRule rules)
+
+    /// Remap the nonterminals in the given CNF grammar to single letters.
+    let toCharacterCNF (grammar : ChomskyNormalCfg<'nt, char>) : ChomskyNormalCfg<char, char> =
+        let nonterminals = SetHelpers.choose id (cnfNonterminals grammar)
+        let im = SetHelpers.toIndexedMap nonterminals
+        // Avoid reusing S; it represents our start state.
+        let toLetter x = "ABCDEFGHIJKLMNOPQRTUVWXYZ".[im.[x]]
+        
+        mapNonterminals toLetter grammar
+
+    /// Show the rules of a CNF grammar over characters.
+    let showRules : ChomskyNormalCfg<char, char> -> string =
+        function
+        | ChomskyNormalCfg rules ->
+            let showRule : ChomskyNormalRule<char, char> -> string =
+                function
+                | BinaryRule (A, (B, C)) -> sprintf "%c -> %c%c" (defaultArg A 'S') B C
+                | TerminalRule (A, a)    -> sprintf "%c -> %c" (defaultArg A 'S') a
+                | StartToEpsilon         -> "S -> ε"
+
+            List.map showRule (Set.toList rules) |> StringHelpers.concatLines
+    
+    /// Convert a CFG over characters to Chomsky normal form and show its rules.
+    let convertAndShowRules : ContextFreeGrammar<char, char> -> string =
+        chomskyNormalForm >> toCharacterCNF >> showRules
             
     /// An example CNF grammar from the slides on the CYK algorithm.
     let p150Example : ChomskyNormalCfg<char, char> =

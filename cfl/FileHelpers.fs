@@ -199,6 +199,23 @@ let writeAll (write : string -> 'a -> Result<unit>) (emptyResult : Result<unit>)
                    |> Result.sequence
                    |> Result.map ignore
 
+let performCyk : string list -> unit =
+    function
+    | [grammarPath] ->
+        match readCfgXmlFile grammarPath with
+        | Success grammar ->
+            let cnf = ChomskyNormalForm.chomskyNormalForm grammar
+            let inputString = readStdinToTrimmedEnd()
+            let accept = CYKParser.cykParse cnf inputString
+            printfn "The given string %s to the given grammar."
+                (if accept then "belongs" else "does not belong")
+        | Error e ->
+            eprint e
+    | _ ->
+        eprint "The specified subprogram takes exactly one argument: \
+                the file name of the context-free grammar file. \
+                The input string is read from STDIN."
+
 let performParse (parse : ContextFreeGrammar<char, char> -> Lazy<char list> -> Result<#seq<ParseTree<char, char>>>) (argv : string list) =
     match argv with
     | [grammarPath; outputPath] ->
@@ -217,7 +234,7 @@ let performParse (parse : ContextFreeGrammar<char, char> -> Lazy<char list> -> R
                 the file name of the context-free grammar file, and the \
                 output path pattern."
 
-let performEarleyParse = 
+let performEarleyParse : string list -> unit = 
     let parseEarley grammar (input : Lazy<char list>) = 
         Result.Success (EarleyParser.parse id grammar input.Value)
 
@@ -234,7 +251,7 @@ let performLRParse (createParser : ContextFreeGrammar<char, char> -> Result<LRPa
 
     performParse parseLR
 
-let performLLParse =
+let performLLParse : string list -> unit =
     let parseLL (grammar : ContextFreeGrammar<char, char>) (input : Lazy<char list>) =
         LLParser.createLLTable grammar |> Result.map (fun table ->
             let tableFunc = fun x y -> Map.tryFind (x, y) table

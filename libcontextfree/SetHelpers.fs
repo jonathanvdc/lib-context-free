@@ -32,6 +32,8 @@ module SetHelpers =
 
     /// Converts the given sequence to a map where every
     /// item in the set has been assigned a unique index.
+    /// (The assigned indices are 0..n-1, where n equals the
+    /// number of items in the sequence.)
     let toIndexedMap (items : seq<'a>) : Map<'a, int> =
         items |> Seq.mapi (fun i x -> x, i)
               |> Map.ofSeq

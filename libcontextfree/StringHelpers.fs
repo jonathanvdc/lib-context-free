@@ -18,3 +18,12 @@ module StringHelpers =
             | c -> string c
 
         String.collect escapeChar
+
+    /// A collection of meaning-free letters that can be used for remapping
+    /// nonterminal names to single characters. Letters like S and ε, which
+    /// usually have some special meaning in a grammar, are avoided.
+    let letters : string =
+        "ABCDEFGHIJKLMNOPQRTUVWXYZ\
+         abcdefghijklmnopqrstuvwxyz\
+         αβγδζηθικλμνξπρστυφχψως\
+         ΓΔΘΛΞΠΣΦΨΩджилшыюя"

@@ -27,7 +27,7 @@ module CYKParser =
           for (Rj, a) in unitProductions do
             if S.[i] = a then
               let j = Rmap.[Rj]
-              P.[1,i,j] <- true
+              P.[0,i,j] <- true
         
         // Dynamically match bigger and bigger substrings of S.
         for i in 2..n do           // i = substring length
@@ -38,7 +38,10 @@ module CYKParser =
                 // (split at k). If the parts can respectively be deduced from RB and
                 // RC, then the whole can be deduced from RA through the production
                 // RA -> RB RC.
-                if P.[k-1, j-1, Rmap.[Some RB]] && P.[i-k, j+k-2, Rmap.[Some RC]] then
+                if P.[k-1, j-1, Rmap.[Some RB]] && P.[i-k-1, j+k-1, Rmap.[Some RC]] then
+                  // printf "%A -> %A and "  (RB) (System.String.Concat (S.[j-1..j+k-2]))
+                  // printf "%A -> %A  =>  " (RC) (System.String.Concat (S.[j-1+k..j+i-2]))
+                  // printf "%A -> %A.\n"    (RA) (System.String.Concat (S.[j-1..j+i-2]))
                   P.[i-1, j-1, Rmap.[RA]] <- true
         
         // Can we deduce the whole string from the starting symbol (None)?
