@@ -90,15 +90,14 @@ module ContextFreeGrammar =
             let invalidTerminals = invalidStrings T
             if Seq.isEmpty invalidTerminals then
                 let nonterminalMap =
-                    if Seq.isEmpty (invalidStrings V) then
-                        // If at all possible, we should re-use the old nonterminal names.
-                        V |> Seq.map (fun str -> str, Seq.exactlyOne str)
-                          |> Map.ofSeq
-                    else
-                        // We can just rename nonterminals, because nonterminal names
-                        // don't have any observable effect on the grammar's language. 
-                        V |> Seq.mapi (fun i str -> str, char (i + int 'A'))
-                          |> Map.ofSeq
+                    Map.ofSeq <|
+                        if Seq.isEmpty (invalidStrings V) then
+                            // If at all possible, we should re-use the old nonterminal names.
+                            V |> Seq.map (fun str -> str, Seq.exactlyOne str)
+                        else
+                            // We can just rename nonterminals, because nonterminal names
+                            // don't have any observable effect on the grammar's language. 
+                            V |> Seq.mapi (fun i str -> str, StringHelpers.letters.[i])
                 let convNonterminal (nt : string) : char = nonterminalMap.[nt]
                 let convTerminal    (t : string)  : char = Seq.exactlyOne t
                 Success (mapSymbols convNonterminal convTerminal grammar)

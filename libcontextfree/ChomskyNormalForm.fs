@@ -302,7 +302,7 @@ module ChomskyNormalForm =
         let nonterminals = SetHelpers.choose id (cnfNonterminals grammar)
         let im = SetHelpers.toIndexedMap nonterminals
         // Avoid reusing S; it represents our start state.
-        let toLetter x = "ABCDEFGHIJKLMNOPQRTUVWXYZ".[im.[x]]
+        let toLetter x = StringHelpers.letters.[im.[x]]
         
         mapNonterminals toLetter grammar
 
