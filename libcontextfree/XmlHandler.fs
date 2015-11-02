@@ -192,3 +192,77 @@ module XmlHandler =
             Error "The given PDA has no starting state."
         | q0s ->
             Error (sprintf "The given PDA has multiple starting states: %A." q0s)
+
+    [<Literal>]
+    let private TmXmlSample = 
+        """<?xml version="1.0"?>
+        <TM>
+            <InputAlphabet>
+                <symbol>0</symbol>
+		        <symbol>1</symbol>
+            </InputAlphabet>
+            <TapeAlphabet>
+                <symbol>0</symbol>
+		        <symbol>1</symbol>
+		        <symbol>X</symbol>
+            </TapeAlphabet>
+	        <Blank>B</Blank>
+	        <States>
+		        <state>Q0</state>
+		        <state>Q1</state>
+	        </States>
+	        <Transitions>
+		        <transition>
+			        <from>Q0</from>
+			        <to>Q1</to>
+			        <read>Z</read>
+			        <write>X</write>
+			        <dir>R</dir>
+		        </transition>
+		        <transition>
+			        <from>Q0</from>
+			        <to>Q3</to>
+			        <read>Y</read>
+			        <write>Y</write>
+			        <dir>R</dir>
+		        </transition>
+	        </Transitions>
+	        <StartState>
+		        <name>Q0</name>
+	        </StartState>
+	        <AcceptingStates>
+		        <state>
+			        <name>Q4</name>
+		        </state>
+                <state>
+			        <name>Q5</name>
+		        </state>
+	        </AcceptingStates>
+        </TM>
+        """
+
+    type TmFile = XmlProvider<TmXmlSample>
+
+    let toTm (input : TmFile.Tm) : TuringMachine<string, string> =
+        let readDirection (d : string) : Direction =
+            match d with
+                | "L" -> Left
+                | "R" -> Right
+                | _   -> raise (new System.ArgumentException("Invalid direction."))
+
+        let readTransition (t : TmFile.Transition) : (string * string) * (string * string * Direction) =
+            ((t.From, t.Read), (t.To, t.Write, readDirection t.Dir))
+
+        let δ : Map<string * string, string * string * Direction> =
+            Map.ofSeq (Seq.map readTransition input.Transitions.Transitions)
+
+        let q0 : string =
+            input.StartState.Name
+
+        let B : string =
+            input.Blank
+
+        let F : Set<string> =
+            set [ for s in input.AcceptingStates.States -> s.Name ]
+
+        TuringMachine (δ, q0, B, F)

@@ -65,6 +65,7 @@
     <Compile Include="EarleyParser.fs" />
     <Compile Include="LLParser.fs" />
     <Compile Include="LRParser.fs" />
+    <Compile Include="TuringMachine.fs" />
     <Compile Include="IOHelpers.fs" />
     <Compile Include="TreeHandler.fs" />
     <Compile Include="GraphvizHandler.fs" />

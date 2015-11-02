@@ -245,3 +245,19 @@ let performLLParse =
         )
 
     performParse parseLL
+
+// cfl.exe run-tm TM.xml 0 1 1 0
+let runTuringMachine (argv : string list) =
+    match argv with
+    | [] ->
+        eprintfn "Specify a filename containing a Turing machine in XML format,"
+        eprintfn "and a space-separated input string in the remaining arguments."
+    | fileName :: input ->
+        let tm = readFile fileName <| fun fs ->
+            Success (XmlHandler.toTm (XmlHandler.TmFile.Load(fs)))
+
+        Result.printWith (fun tm' ->
+            match TuringMachine.run tm' input with
+                | true -> "The TM accepts the given input string."
+                | false -> "The TM does not accept the given input string."
+        ) tm

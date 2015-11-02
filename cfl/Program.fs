@@ -94,6 +94,10 @@ let subprograms : Subprogram list =
           Doc = "Performs an LR(1) parse.";
           Action = performLRParse LRParser.createLR1 }
 
+        { Name = "run-tm";
+          Doc = "Run a Turing machine over some input string.";
+          Action = runTuringMachine }
+
         // Insert additional subprograms here.
     ]
 
