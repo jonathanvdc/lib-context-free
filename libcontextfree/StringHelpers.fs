@@ -2,6 +2,10 @@
 
 /// Defines a number of string helper functions.
 module StringHelpers =
+    /// Split a string into an array of lines.
+    let splitLines (s : string) : string[] =
+        s.Split([| "\r\n"; "\n" |], System.StringSplitOptions.None)
+
     /// Concatenate a list of strings using newlines.
     let concatLines : seq<string> -> string =
         String.concat System.Environment.NewLine
