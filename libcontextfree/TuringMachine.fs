@@ -29,8 +29,13 @@ module TuringMachine =
                     (pos : int) : bool =
         // Debug with:
         // for i in 0..10 do
-        //     printf "%s%A " (if pos = i then ">" else " ")
-        //                    (defaultArg (Map.tryFind i tape) tm.B)
+        //     let sym = (defaultArg (Map.tryFind i tape) tm.B)
+        //     if sym = tm.B then
+        //         System.Console.ForegroundColor <- System.ConsoleColor.Blue
+        //     if pos = i then
+        //         System.Console.ForegroundColor <- System.ConsoleColor.Yellow
+        //     printf "%s%O " (if pos = i then ">" else " ") sym
+        //     System.Console.ResetColor()
         // printf "\n"
 
         if tm.F.Contains q then
