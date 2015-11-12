@@ -109,7 +109,7 @@ let maybePrintCfgProperty (show : ContextFreeGrammar<char, char> -> Result<strin
 /// Defines a subprogram that prints the given property of the context-free grammar
 /// in file referred to by the single argument.
 let printCfgProperty (show : ContextFreeGrammar<char, char> -> string) (argv : string list) =
-    maybePrintCfgProperty (show >> Result.Success) argv
+    maybePrintCfgProperty (show >> Success) argv
 
 /// Defines a subprogram function that reads input from a file, performs a
 /// conversion, and writes it to another file.
@@ -236,7 +236,7 @@ let performParse (parse : ContextFreeGrammar<char, char> -> Lazy<char list> -> R
 
 let performEarleyParse : string list -> unit = 
     let parseEarley grammar (input : Lazy<char list>) = 
-        Result.Success (EarleyParser.parse id grammar input.Value)
+        Success (EarleyParser.parse id grammar input.Value)
 
     performParse parseEarley
 

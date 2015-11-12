@@ -1,35 +1,40 @@
 ﻿namespace libcontextfree
 
-/// Result<'a> is like 'a option, but the "None" value contains an error message.
-type Result<'a> =
-| Success of 'a
-| Error of string
+/// Result<'a, 'b> is like 'a option, but the "None" 
+/// value contains an error message.
+type Result<'success, 'error> =
+| Success of 'success
+| Error of 'error
+
+/// Result<'a> is like 'a option, but the "None" 
+/// value contains an error message.
+type Result<'a> = Result<'a, string>
 
 module Result =
     /// Finds out if the given result value indicates success.
-    let isSuccess (x : Result<'a>) = 
+    let isSuccess (x : Result<'a, 'b>) = 
         match x with
         | Success _ -> true
         | _         -> false
 
     /// Determines if the given result was unsuccessful.
-    let isError (x : Result<'a>) = 
+    let isError (x : Result<'a, 'b>) = 
         not (isSuccess x)
 
     /// Chain computations that might fail.
-    let bind (binder : 'a -> Result<'b>) (result : Result<'a>) : Result<'b> =
+    let bind (binder : 'a -> Result<'b, 'c>) (result : Result<'a, 'c>) : Result<'b, 'c> =
         match result with
         | Error e -> Error e
         | Success a -> binder a
 
     /// Map a function over a Success value.
-    let map (f : 'a -> 'b) (result : Result<'a>) : Result<'b> =
+    let map (f : 'a -> 'b) (result : Result<'a, 'c>) : Result<'b, 'c> =
         bind (Success << f) result
 
     /// Return a list of all given results, if they are all Successes; otherwise,
     /// return the first error in the list.
-    let rec sequence (rs : #seq<Result<'a>>) : Result<'a list> =
-        let folder (state : Result<'a list>) (item : Result<'a>) =
+    let rec sequence (rs : #seq<Result<'a, 'b>>) : Result<'a list, 'b> =
+        let folder (state : Result<'a list, 'b>) (item : Result<'a, 'b>) =
             match state with
             | Error _    -> state
             | Success xs -> map (fun x -> x :: xs) item
