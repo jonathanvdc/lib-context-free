@@ -251,7 +251,7 @@ module LRParser =
                     // Try to reduce.
                     for t in follow lookahead do
                         results <- Result.bind (addReduce t) results
-                    if item.Head = startSymbol && item.NextSymbol = None then
+                    if item.Head = startSymbol then
                         // Starting symbol. Our work here is done.
                         results <- Result.map (Map.add (stateIndex, EndOfInput) Accept) results
                 | _ -> 
