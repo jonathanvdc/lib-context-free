@@ -7,6 +7,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "libcontextfree", "libcontex
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "cfl", "..\cfl\cfl.fsproj", "{3DA872B0-D8B7-483F-B660-3E73A9B0B113}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "unittests", "..\unittests\unittests.fsproj", "{590355BC-C980-4241-B8E6-B506BA7AAFD7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DA872B0-D8B7-483F-B660-3E73A9B0B113}.Release|Any CPU.Build.0 = Release|Any CPU
+		{590355BC-C980-4241-B8E6-B506BA7AAFD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{590355BC-C980-4241-B8E6-B506BA7AAFD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{590355BC-C980-4241-B8E6-B506BA7AAFD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{590355BC-C980-4241-B8E6-B506BA7AAFD7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
