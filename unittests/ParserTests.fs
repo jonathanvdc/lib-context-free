@@ -45,6 +45,17 @@ type ParserTests () =
     let grammar1TestCase3 = ("yz", ProductionNode("S", [TerminalLeaf 'y'; ProductionNode("S", []); TerminalLeaf 'z']))
     let grammar1TestCase4 = ("xyzz", ProductionNode("S", [TerminalLeaf 'x'; ProductionNode("S", [TerminalLeaf 'y'; ProductionNode("S", []); TerminalLeaf 'z']); TerminalLeaf 'z']))
 
+    let grammar2 = 
+        ContextFreeGrammar(
+            set [
+                    ProductionRule("S", [Nonterminal "F"; Nonterminal "S"])
+                    ProductionRule("S", [])
+                    ProductionRule("F", [Terminal 'x'])
+                ], "S")
+
+    let grammar2TestCase1 = ("", ProductionNode("S", []))
+    let grammar2TestCase2 = ("x", ProductionNode("S", [ProductionNode("F", [TerminalLeaf 'x']); ProductionNode("S", [])]))
+
     [<TestMethod>]
     member this.LLGrammar1Test1 () = LLTest grammar1 grammar1TestCase1
     [<TestMethod>]
@@ -62,3 +73,13 @@ type ParserTests () =
     member this.LR1Grammar1Test3 () = LR1Test grammar1 grammar1TestCase3
     [<TestMethod>]
     member this.LR1Grammar1Test4 () = LR1Test grammar1 grammar1TestCase4
+
+    [<TestMethod>]
+    member this.LLGrammar2Test1 () = LLTest grammar2 grammar2TestCase1
+    [<TestMethod>]
+    member this.LLGrammar2Test2 () = LLTest grammar2 grammar2TestCase2
+
+    [<TestMethod>]
+    member this.LR1Grammar2Test1 () = LR1Test grammar2 grammar2TestCase1
+    [<TestMethod>]
+    member this.LR1Grammar2Test2 () = LR1Test grammar2 grammar2TestCase2
