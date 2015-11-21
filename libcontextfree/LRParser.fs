@@ -11,6 +11,12 @@ module LRParser =
     | Accept
     /// Indicates that the LR parser could not parse the input string.
     | Fail
+        override this.ToString() =
+            match this with
+            | Shift i -> sprintf "shift %d" i
+            | Reduce r -> string r
+            | Accept -> "accept"
+            | Fail -> "error"
 
     type ParserState<'nt, 't> = 't list * (ParseTree<'nt, LTerminal<'t>> * int) list
 
@@ -213,6 +219,24 @@ module LRParser =
                     : Result<Map<int * LTerminal<'t>, LRAction<'nt, 't>>> =
         let mutable results = Success Map.empty
         for KeyValue(state, stateIndex) in states do
+            // A state is accepting if the following conditions are met:
+            //   * We found an LR item of the form
+            //         S -> α .
+            //     where S is the starting symbol. 
+            //   * The set of lookahead symbols contains
+            //     the end-of-input marker.
+            let isAccepting (item : LRItem<'nt, 't>, lookahead : 'a) =
+                item.Head = startSymbol && item.NextSymbol = None && 
+                follow lookahead |> Set.contains EndOfInput
+
+            // Try to generate acceptance actions first.
+            if state |> Seq.exists isAccepting then
+                // This state is accepting.
+                results <- Result.map (Map.add (stateIndex, EndOfInput) Accept) results
+
+            // Take the closure of all states now, and
+            // use that closure's items to generate 
+            // shift/reduce actions.
             let state = closure state
             for (item, lookahead) in state do
                 match item.NextSymbol with
@@ -251,9 +275,6 @@ module LRParser =
                     // Try to reduce.
                     for t in follow lookahead do
                         results <- Result.bind (addReduce t) results
-                    if item.Head = startSymbol then
-                        // Starting symbol. Our work here is done.
-                        results <- Result.map (Map.add (stateIndex, EndOfInput) Accept) results
                 | _ -> 
                     // Nothing to do here, really.
                     ()
