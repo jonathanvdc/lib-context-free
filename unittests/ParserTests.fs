@@ -56,6 +56,31 @@ type ParserTests () =
     let grammar2TestCase1 = ("", ProductionNode("S", []))
     let grammar2TestCase2 = ("x", ProductionNode("S", [ProductionNode("F", [TerminalLeaf 'x']); ProductionNode("S", [])]))
 
+    let grammar3 =
+        ContextFreeGrammar(
+            set [
+                    ProductionRule("S", [Terminal 'i'; Nonterminal "S"])
+                    ProductionRule("S", [Nonterminal "F"])
+                    ProductionRule("F", [Terminal 'i'; Nonterminal "F"; Terminal 'e'])
+                    ProductionRule("F", [])
+                ], "S")
+
+    let grammar3TestCase1 = ("", ProductionNode("S", [ProductionNode("F", [])]))
+    let grammar3TestCase2 = ("i", ProductionNode("S", [TerminalLeaf 'i'; ProductionNode("F", [])]))
+    let grammar3TestCase3 = ("ie", ProductionNode("S", [ProductionNode("F", [TerminalLeaf 'i'; ProductionNode("F", []); TerminalLeaf 'e'])]))
+    let grammar3TestCase4 = ("iie", ProductionNode("S", [TerminalLeaf 'i'; ProductionNode("F", [TerminalLeaf 'i'; ProductionNode("F", []); TerminalLeaf 'e'])]))
+
+    let grammar4 = 
+        ContextFreeGrammar(
+            set [
+                    ProductionRule("S", [Nonterminal "S"; Nonterminal "F"])
+                    ProductionRule("S", [])
+                    ProductionRule("F", [Terminal 'x'])
+                ], "S")
+
+    let grammar4TestCase1 = ("", ProductionNode("S", []))
+    let grammar4TestCase2 = ("x", ProductionNode("S", [ProductionNode("S", []); ProductionNode("F", [TerminalLeaf 'x'])]))
+
     [<TestMethod>]
     member this.LLGrammar1Test1 () = LLTest grammar1 grammar1TestCase1
     [<TestMethod>]
@@ -83,3 +108,22 @@ type ParserTests () =
     member this.LR1Grammar2Test1 () = LR1Test grammar2 grammar2TestCase1
     [<TestMethod>]
     member this.LR1Grammar2Test2 () = LR1Test grammar2 grammar2TestCase2
+
+    [<TestMethod>]
+    member this.LR1Grammar3Test1 () = LR1Test grammar3 grammar3TestCase1
+    [<TestMethod>]
+    member this.LR1Grammar3Test2 () = LR1Test grammar3 grammar3TestCase2
+    [<TestMethod>]
+    member this.LR1Grammar3Test3 () = LR1Test grammar3 grammar3TestCase3
+    [<TestMethod>]
+    member this.LR1Grammar3Test4 () = LR1Test grammar3 grammar3TestCase4
+
+    [<TestMethod>]
+    member this.LR0Grammar4Test1 () = LR0Test grammar4 grammar4TestCase1
+    [<TestMethod>]
+    member this.LR0Grammar4Test2 () = LR0Test grammar4 grammar4TestCase2
+
+    [<TestMethod>]
+    member this.LR1Grammar4Test1 () = LR1Test grammar4 grammar4TestCase1
+    [<TestMethod>]
+    member this.LR1Grammar4Test2 () = LR1Test grammar4 grammar4TestCase2
