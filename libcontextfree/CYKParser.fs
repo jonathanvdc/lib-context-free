@@ -4,7 +4,7 @@ open ChomskyNormalForm
 module CYKParser =
     /// Determine whether this grammar can generate the given string using
     /// the Cocke-Younger-Kasami (CYK) algorithm.
-    let cykParse (grammar : ChomskyNormalCfg<'nt, 't>) (S' : seq<'t>) : bool =
+    let cykParse (grammar : ChomskyNormalCfg<'nt, 't>) (S' : seq<'t>) : (bool * Map<'nt option, int> * bool[,,] )=
         // The input string as an array.
         let S = Array.ofSeq S'
         let n = Array.length S
@@ -45,4 +45,4 @@ module CYKParser =
                   P.[i-1, j-1, Rmap.[RA]] <- true
         
         // Can we deduce the whole string from the starting symbol (None)?
-        P.[n-1, 0, Rmap.[None]]
+        P.[n-1, 0, Rmap.[None]], Rmap, P

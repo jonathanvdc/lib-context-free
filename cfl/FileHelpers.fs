@@ -3,6 +3,7 @@
 open libcontextfree
 open System
 open System.IO
+open System.Collections.Generic
 
 /// Print a string, followed by a newline, to stdout.
 let print = printfn "%s"
@@ -204,9 +205,26 @@ let performCyk : string list -> unit =
     | [grammarPath] ->
         match readCfgXmlFile grammarPath with
         | Success grammar ->
-            let cnf = ChomskyNormalForm.chomskyNormalForm grammar
+            let cnf =  ChomskyNormalForm.chomskyNormalForm grammar |> ChomskyNormalForm.toCharacterCNF
             let inputString = readStdinToTrimmedEnd()
-            let accept = CYKParser.cykParse cnf inputString
+            let (accept, Rmap, P)  = CYKParser.cykParse cnf inputString
+            
+            let binaryProductions = ChomskyNormalForm.cnfBinaryProductions cnf
+            let n = List.length inputString
+            // Print the damn pyramid
+            for i in n .. -1 .. 1 do            // i = substring length
+              for j in 1..n-i+1 do      // j = starting position
+                let set = new HashSet<char>()
+                for (RA, (_, _)) in binaryProductions do
+                  if P.[i-1, j-1, Rmap.[RA]] then
+                    set.Add(match RA with |Some char -> char |None -> 'S') |> ignore
+                if Seq.isEmpty set then
+                    printf "-\t"
+                else
+                    printf "%s" ("{" + (set |> Seq.map (fun c -> new string [| c |]) |> String.concat ", ") + "}\t")
+
+              printf "\n"
+
             printfn "The given string %s to the given grammar."
                 (if accept then "belongs" else "does not belong")
         | Error e ->
