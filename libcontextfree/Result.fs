@@ -1,13 +1,12 @@
 ﻿namespace libcontextfree
 
 /// Result<'a, 'b> is like 'a option, but the "None" 
-/// value contains an error message.
+/// value contains an error message of type 'b.
 type Result<'success, 'error> =
 | Success of 'success
 | Error of 'error
 
-/// Result<'a> is like 'a option, but the "None" 
-/// value contains an error message.
+/// Usually, we want 'b = string:
 type Result<'a> = Result<'a, string>
 
 module Result =
@@ -22,7 +21,7 @@ module Result =
         not (isSuccess x)
 
     /// Retrieve the value inside a Success. Throw an exception if the argument is an Error.
-    let get (x : Result<'a>) : 'a =
+    let get (x : Result<'a, 'b>) : 'a =
         match x with
         | Error e -> raise (new System.InvalidOperationException(e))
         | Success a -> a
