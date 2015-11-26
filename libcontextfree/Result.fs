@@ -21,6 +21,12 @@ module Result =
     let isError (x : Result<'a, 'b>) = 
         not (isSuccess x)
 
+    /// Retrieve the value inside a Success. Throw an exception if the argument is an Error.
+    let get (x : Result<'a>) : 'a =
+        match x with
+        | Error e -> raise (new System.InvalidOperationException(e))
+        | Success a -> a
+
     /// Chain computations that might fail.
     let bind (binder : 'a -> Result<'b, 'c>) (result : Result<'a, 'c>) : Result<'b, 'c> =
         match result with
