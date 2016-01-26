@@ -1,0 +1,110 @@
+﻿1. Zet de grammatica
+
+S -> 0S1 | A
+A -> 1A0 | S | ε
+
+om naar een PDA die de zelfde taal via empty stack accepteert. XML:
+
+<?xml version="1.0" encoding="utf-8"?>
+<CFG>
+<Variables>SA<StartSymbol>S</StartSymbol></Variables>
+<Terminals>01</Terminals>
+<Productions>
+    <Rule RHS="0S1" LHS="S" />
+    <Rule RHS="A" LHS="S" />
+    <Rule RHS="1A0" LHS="A" />
+    <Rule RHS="S" LHS="A" />
+    <Rule RHS="" LHS="A" />
+</Productions>
+</CFG>
+
+Antwoord ziet er zo uit ( http://mdaines.github.io/viz.js/ ):
+
+digraph PDA {
+    node0 [label="start" shape=none];
+    node1 [label="q0" shape=circle];
+    node1 -> node1 [label="1, 1 / &#949;
+\n0, 0 / &#949;
+\n&#949;, S / A
+\n&#949;, S / 0S1
+\n&#949;, A / S
+\n&#949;, A / 1A0
+\n&#949;, A / &#949;"];
+    node0 -> node1 [label=""];
+}
+
+Check dat ze equivalent zijn. Deze strings zouden tot de taal moeten behoren:
+
+    00101011
+    1111100000
+    01
+    ε
+
+Deze niet:
+
+    1
+    1111
+    001010110
+    010
+
+==========================================================================
+
+2. Doe hetzelfde voor de grammatica
+
+S -> aAA
+A -> aS | bS | a
+
+In XML-formaat:
+
+<?xml version="1.0" encoding="utf-8"?>
+<CFG>
+  <Variables>SA<StartSymbol>S</StartSymbol></Variables>
+  <Terminals>01</Terminals>
+  <Productions>
+    <Rule RHS="aAA" LHS="S" />
+    <Rule RHS="aS" LHS="A" />
+    <Rule RHS="bS" LHS="A" />
+    <Rule RHS="" LHS="A" />
+  </Productions>
+</CFG>
+
+Antwoord ziet er zo uit:
+
+digraph PDA {
+    node0 [label="start" shape=none];
+    node1 [label="q0" shape=circle];
+    node1 -> node1 [label="&#949;, S / aAA
+\n&#949;, A / bS
+\n&#949;, A / aS
+\n&#949;, A / &#949;"];
+    node0 -> node1 [label=""];
+}
+
+Behoren tot de taal:
+
+    aaa
+    abaaabaaa
+    aaaaaaabaaaa
+
+Maar niet:
+
+    ε
+    abb
+    baaabaaa
+    
+==========================================================================
+
+3. Zet de PDA uit 1. terug om naar een CFG. Is die equivalent? Check met dezelfde strings.
+
+==========================================================================
+
+4. Stel dat P = ({p, q}, {0, 1}, {X, Z}, δ, q, Z) beschreven wordt door:
+
+    δ(q, 1, Z) = {(q, XZ)}
+    δ(q, 1, X) = {(q, XX)}
+    δ(q, 0, X) = {(p, X)}
+    δ(q, ε, X) = {(q, ε)}
+    δ(q, 1, X) = {(p, ε)}
+    δ(q, 0, Z) = {(q, Z)}
+    
+Maak hier een CFG van.

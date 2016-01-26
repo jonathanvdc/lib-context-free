@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PDA>
+  <Alphabet />
+  <StackAlphabet>
+    <symbol>A</symbol>
+    <symbol>S</symbol>
+    <symbol>a</symbol>
+    <symbol>b</symbol>
+  </StackAlphabet>
+  <States>
+    <state>
+      <name>q</name>
+      <starting>true</starting>
+      <accepting>false</accepting>
+    </state>
+  </States>
+  <Transitions>
+    <transition>
+      <from>q</from>
+      <to>q</to>
+      <input>empty</input>
+      <stacktop>A</stacktop>
+      <operation>PUSH</operation>
+    </transition>
+    <transition>
+      <from>q</from>
+      <to>q</to>
+      <input>empty</input>
+      <stacktop>A</stacktop>
+      <operation>PUSH</operation>
+      <push>a</push>
+      <push>S</push>
+    </transition>
+    <transition>
+      <from>q</from>
+      <to>q</to>
+      <input>empty</input>
+      <stacktop>A</stacktop>
+      <operation>PUSH</operation>
+      <push>b</push>
+      <push>S</push>
+    </transition>
+    <transition>
+      <from>q</from>
+      <to>q</to>
+      <input>empty</input>
+      <stacktop>S</stacktop>
+      <operation>PUSH</operation>
+      <push>a</push>
+      <push>A</push>
+      <push>A</push>
+    </transition>
+  </Transitions>
+</PDA>
