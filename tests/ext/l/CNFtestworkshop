@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CFG>
+  <Variables>SV<StartSymbol>S</StartSymbol></Variables>
+  <Terminals>ab</Terminals>
+  <Productions>
+    <Rule RHS="SS" LHS="S" />
+    <Rule RHS="b" LHS="S" />
+    <Rule RHS="aSV" LHS="S" />
+    <Rule RHS="aSbS" LHS="S" />
+    <Rule RHS="baVbbaV" LHS="V" />
+    <Rule RHS="" LHS="V" />
+  </Productions>
+</CFG>
+
+
+
+(after cnf, similar to: )
+
+<?xml version="1.0" ?>
+<CFG>
+	<Variables>
+		BCLMNODEFGHIJKPQSA
+		<StartSymbol>S</StartSymbol>
+	</Variables>
+	<Terminals>
+		ab
+	</Terminals>
+	<Productions>
+		<Rule RHS= "SH" LHS="B"/>
+		<Rule RHS= "SA" LHS="C"/>
+		<Rule RHS= "AJ" LHS="L"/>
+		<Rule RHS= "QP" LHS="M"/>
+		<Rule RHS= "QO" LHS="N"/>
+		<Rule RHS= "PA" LHS="O"/>
+		<Rule RHS= "PI" LHS="D"/>
+		<Rule RHS= "PJ" LHS="E"/>
+		<Rule RHS= "PK" LHS="F"/>
+		<Rule RHS= "PL" LHS="G"/>
+		<Rule RHS= "QS" LHS="H"/>
+		<Rule RHS= "QM" LHS="I"/>
+		<Rule RHS= "QN" LHS="J"/>
+		<Rule RHS= "AI" LHS="K"/>
+		<Rule RHS= "a" LHS="P"/>
+		<Rule RHS= "b" LHS="Q"/>
+		<Rule RHS= "PB" LHS="S"/>
+		<Rule RHS= "PC" LHS="S"/>
+		<Rule RHS= "PS" LHS="S"/>
+		<Rule RHS= "SS" LHS="S"/>
+		<Rule RHS= "b" LHS="S"/>
+		<Rule RHS= "QD" LHS="A"/>
+		<Rule RHS= "QE" LHS="A"/>
+		<Rule RHS= "QF" LHS="A"/>
+		<Rule RHS= "QG" LHS="A"/>
+	</Productions>
+</CFG>
