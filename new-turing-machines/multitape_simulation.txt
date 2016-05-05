@@ -1,0 +1,39 @@
+﻿(Q, Γ1, ..., Γk, find):
+	// for the transition (Q, Γ) -> (r, sym, dir, j) in δ:
+	if cell[2j] == 1:
+		Stay, go to (Q, Γ1, ..., Γk, sim)
+	else:
+		Right, go to (Q, Γ1, ..., Γk, find)
+
+(Q, Γ1, ..., Γk, sim):
+	if dir == Stay:
+		write 1 to cell[2j]
+		write sym to cell[2j-1]
+		Stay, go to (r, [Γ1 ... Γk with Γj = sym], return)
+
+	if dir == Left:
+		write 0 to cell[2j]
+		write sym to cell[2j-1]
+		Left, go to (r, [Γ1 ... Γk with Γj = sym], goleft)
+
+	if dir == Right:
+		write 0 to cell[2j]
+		write sym to cell[2j-1]
+		Right, go to (r, [Γ1 ... Γk with Γj = sym], goright)
+
+(Q, Γ1, ..., Γk, goleft):
+	write 1 to cell[2j]
+	Stay, go to (Q, [Γ1, ..., Γk], return)
+
+(Q, Γ1, ..., Γk, goright):
+	if cell is old blank:
+		write new blank with 1 at cell[2j]
+	else:
+		write 1 to cell[2j]
+	Stay, go to (Q, [Γ1, ..., Γk], return)
+
+(Q, Γ1, ..., Γk, return):
+	if cell is #:
+		Right, go to (Q, Γ1, ..., Γk, find)
+	else:
+		Left, go to (Q, Γ1, ..., Γk, return)

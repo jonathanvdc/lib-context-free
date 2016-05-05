@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+
+<!-- Oefening 1 op pagina 153 -->
+<Program main="P">
+  <InputAlphabet>
+    <symbol name="x"/>
+    <symbol name="y"/>
+  </InputAlphabet>
+  <TapeAlphabet>
+    <symbol name="x"/>
+    <symbol name="y"/>
+    <symbol name="B"/>
+  </TapeAlphabet>
+  <Blank>
+    <symbol name="B"/>
+  </Blank>
+  
+  <TM name="P">
+    <States>
+      <state name="Q1"/>
+      <state name="Q2"/>
+    </States>
+    <Transitions>
+      <transition from="Q1" to="Q2" read="x" write="x" dir="S"/>
+      <transition from="Q2" to="Q1" read="x" write="x" dir="S"/>
+      <transition from="Q2" to="Q1" read="y" write="y" dir="S"/>
+      <transition from="Q2" to="Q1" read="B" write="B" dir="S"/>
+    </Transitions>
+    <StartState>
+      <state name="Q1"/>
+    </StartState>
+    <AcceptingStates>
+    </AcceptingStates>
+    <Subroutines>
+      <subroutine at="Q1" name="M1"/>
+      <subroutine at="Q2" name="M2"/>
+    </Subroutines>
+  </TM>
+
+  <TM name="M1">
+    <States>
+      <state name="Q1"/>
+      <state name="Q2"/>
+    </States>
+    <Transitions>
+      <transition from="Q1" to="Q1" read="y" write="y" dir="R"/>
+      <transition from="Q1" to="Q2" read="x" write="x" dir="S"/>
+      <transition from="Q1" to="Q2" read="B" write="B" dir="S"/>
+    </Transitions>
+    <StartState>
+      <state name="Q1"/>
+    </StartState>
+    <AcceptingStates></AcceptingStates>
+    <Subroutines></Subroutines>
+  </TM>
+
+  <TM name="M2">
+    <States>
+      <state name="Q1"/>
+      <state name="Q2"/>
+    </States>
+    <Transitions>
+      <transition from="Q1" to="Q2" read="y" write="y" dir="S"/>
+      <transition from="Q1" to="Q2" read="x" write="y" dir="S"/>
+      <transition from="Q1" to="Q2" read="B" write="B" dir="S"/>
+    </Transitions>
+    <StartState>
+      <state name="Q1"/>
+    </StartState>
+    <AcceptingStates></AcceptingStates>
+    <Subroutines></Subroutines>
+  </TM>
+</Program>

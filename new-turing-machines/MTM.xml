@@ -1,0 +1,40 @@
+﻿<?xml version="1.0"?>
+<MTM tapes="2">
+  <InputAlphabet>
+    <symbol name="x"/>
+    <symbol name="y"/>
+  </InputAlphabet>
+  <TapeAlphabet>
+    <symbol name="x"/>
+    <symbol name="y"/>
+    <symbol name="B"/>
+  </TapeAlphabet>
+  <Blank>
+    <symbol name="B"/>
+  </Blank>
+  <States>
+    <state name="Q1"/>
+    <state name="Q2"/>
+  </States>
+  <Transitions>
+    <transition from="Q1" to="Q2" tape="1" write="y" dir="R">
+      <reads>
+        <read symbol="x"/>
+        <read symbol="y"/>
+      </reads>
+    </transition>
+    <transition from="Q1" to="Q2" tape="1" write="y" dir="R">
+      <reads>
+        <read symbol="x"/>
+        <read symbol="y"/>
+      </reads>
+    </transition>
+  </Transitions>
+  <StartState>
+    <state name="Q1"/>
+  </StartState>
+  <AcceptingStates>
+    <state name="Q1"/>
+    <state name="Q2"/>
+  </AcceptingStates>
+</MTM>

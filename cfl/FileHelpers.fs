@@ -296,3 +296,19 @@ let runTuringMachine (argv : string list) =
                 | true -> "The TM accepts the given input string."
                 | false -> "The TM does not accept the given input string."
         ) tm
+
+// cfl.exe run-subroutine-program STM.xml 0 1 1 0
+let runSubroutineProgram (argv : string list) =
+    match argv with
+    | [] ->
+        eprintfn "Specify a filename containing a subroutine program machine in XML format,"
+        eprintfn "and a space-separated input string in the remaining arguments."
+    | fileName :: input ->
+        let program = readFile fileName <| fun fs ->
+            Success (XmlHandler.toSubroutineProgram (XmlHandler.SubroutineProgramFile.Load(fs)))
+
+        Result.printWith (fun p ->
+            match TuringMachine.runSubroutineProgram p input with
+                | true -> "The TM accepts the given input string."
+                | false -> "The TM does not accept the given input string."
+        ) program

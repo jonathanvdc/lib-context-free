@@ -193,6 +193,15 @@ module XmlHandler =
         | q0s ->
             Error (sprintf "The given PDA has multiple starting states: %A." q0s)
 
+    
+    let readDirection (d : string) : Direction =
+        match d with
+            | "L" -> Left
+            | "R" -> Right
+            | "S" -> Stay
+            | _   -> raise (new System.ArgumentException("Invalid direction."))
+
+        
     [<Literal>]
     let private TmXmlSample = 
         """<?xml version="1.0"?>
@@ -244,12 +253,6 @@ module XmlHandler =
     type TmFile = XmlProvider<TmXmlSample>
 
     let toTm (input : TmFile.Tm) : TuringMachine<string, string> =
-        let readDirection (d : string) : Direction =
-            match d with
-                | "L" -> Left
-                | "R" -> Right
-                | _   -> raise (new System.ArgumentException("Invalid direction."))
-
         let readTransition (t : TmFile.Transition) : (string * string) * (string * string * Direction) =
             ((t.From, t.Read), (t.To, t.Write, readDirection t.Dir))
 
@@ -266,3 +269,155 @@ module XmlHandler =
             set [ for s in input.AcceptingStates.States -> s.Name ]
 
         TuringMachine (δ, q0, B, F)
+
+
+    [<Literal>]
+    let private StmXmlSample =
+        """<?xml version="1.0" ?>
+        <Program main="R">
+            <InputAlphabet>
+                <symbol name="0"/>
+                <symbol name="1"/>
+            </InputAlphabet>
+            <TapeAlphabet>
+                <symbol name="0"/>
+                <symbol name="1"/>
+            </TapeAlphabet>
+            <Blank>
+                <symbol name="B"/>
+            </Blank>
+            <TM name="R">
+                <States>
+                    <state name="Q0"/>
+                    <state name="Q1"/>
+                </States>
+                <Transitions>
+                    <transition from="Q0" to="Q1" read="X" write="X" dir="R"/>
+                    <transition from="Q0" to="Q3" read="Y" write="Y" dir="R"/>
+                </Transitions>
+                <StartState>
+                    <state name="Q0"/>
+                </StartState>
+                <AcceptingStates>
+                    <state name="Q4"/>
+                    <state name="Q3"/>
+                </AcceptingStates>
+                <Subroutines>
+                    <subroutine at="Q0" name="R"/>
+                    <subroutine at="Q1" name="S"/>
+                </Subroutines>
+            </TM>
+            <TM name="R">
+                <States>
+                    <state name="Q0"/>
+                    <state name="Q1"/>
+                </States>
+                <Transitions>
+                    <transition from="Q0" to="Q1" read="X" write="X" dir="R"/>
+                    <transition from="Q0" to="Q3" read="Y" write="Y" dir="R"/>
+                </Transitions>
+                <StartState>
+                    <state name="Q0"/>
+                </StartState>
+                <AcceptingStates>
+                    <state name="Q4"/>
+                    <state name="Q3"/>
+                </AcceptingStates>
+                <Subroutines>
+                    <subroutine at="Q0" name="R"/>
+                    <subroutine at="Q1" name="S"/>
+                </Subroutines>
+            </TM>
+        </Program>"""
+
+    type SubroutineProgramFile = XmlProvider<StmXmlSample>
+
+    let toSubroutineProgram (input : SubroutineProgramFile.Program) : SubroutineProgram<string, string> =
+        let readTransition (t : SubroutineProgramFile.Transition) : (string * string) * (string * string * Direction) =
+                ((t.From, t.Read), (t.To, t.Write, readDirection t.Dir))
+
+        let readTm (tm : SubroutineProgramFile.Tm) : SubroutineTuringMachine<string, string> =
+            let δ : Map<string * string, string * string * Direction> =
+                Map.ofSeq (Seq.map readTransition tm.Transitions.Transitions)
+
+            let q0 : string =
+                tm.StartState.State.Name
+
+            let B : string =
+                input.Blank.Symbol.Name
+
+            let F : Set<string> =
+                set [ for s in tm.AcceptingStates.States -> s.Name ]
+
+            let sub : Map<string, string> =
+                Map.ofSeq [ for s in tm.Subroutines.Subroutines -> s.At, s.Name ]
+
+            SubroutineTuringMachine (δ, q0, B, F, sub)
+
+        let sub : Map<string, SubroutineTuringMachine<string, string>> =
+            Map.ofSeq [ for tm in input.Tms -> (tm.Name, readTm tm) ]
+
+        SubroutineProgram (sub, input.Main)
+
+    [<Literal>]
+    let private MtmXmlSample = """<?xml version="1.0"?>
+        <MTM tapes="2">
+          <InputAlphabet>
+            <symbol name="x"/>
+            <symbol name="y"/>
+          </InputAlphabet>
+          <TapeAlphabet>
+            <symbol name="x"/>
+            <symbol name="y"/>
+            <symbol name="B"/>
+          </TapeAlphabet>
+          <Blank>
+            <symbol name="B"/>
+          </Blank>
+          <States>
+            <state name="Q1"/>
+            <state name="Q2"/>
+          </States>
+          <Transitions>
+            <transition from="Q1" to="Q2" tape="1" write="y" dir="R">
+              <reads>
+                <read symbol="x"/>
+                <read symbol="y"/>
+              </reads>
+            </transition>
+            <transition from="Q1" to="Q2" tape="1" write="y" dir="R">
+              <reads>
+                <read symbol="x"/>
+                <read symbol="y"/>
+              </reads>
+            </transition>
+          </Transitions>
+          <StartState>
+            <state name="Q1"/>
+          </StartState>
+          <AcceptingStates>
+            <state name="Q1"/>
+            <state name="Q2"/>
+          </AcceptingStates>
+        </MTM>"""
+
+    type MtmFile = XmlProvider<MtmXmlSample>
+
+    let toMtm (mtm : MtmFile.Mtm) : MultitapeTuringMachine<string, string> =
+        let readTransition (t : MtmFile.Transition) : (string * string list) * (string * string * Direction * int) =
+            ((t.From, [ for r in t.Reads -> r.Symbol ]),
+             (t.To, t.Write, readDirection t.Dir, t.Tape))
+
+        let δ : Map<string * string list, string * string * Direction * int> =
+            Map.ofSeq (Seq.map readTransition mtm.Transitions.Transitions)
+
+        let q0 : string =
+            mtm.StartState.State.Name
+
+        let B : string =
+            mtm.Blank.Symbol.Name
+
+        let F : Set<string> =
+            set [ for q in mtm.AcceptingStates.States -> q.Name ]
+
+        MultitapeTuringMachine (δ, q0, B, F)

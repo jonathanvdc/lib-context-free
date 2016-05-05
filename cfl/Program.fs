@@ -108,6 +108,10 @@ let subprograms : Subprogram list =
           Doc = "Run a Turing machine over some input string.";
           Action = runTuringMachine }
 
+        { Name = "run-subroutine-program";
+          Doc = "Run a subroutine program over some input string.";
+          Action = runSubroutineProgram }
+
         // Insert additional subprograms here.
     ]
 
